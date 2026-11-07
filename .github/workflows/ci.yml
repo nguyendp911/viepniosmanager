@@ -38,7 +38,9 @@ jobs:
       - uses: actions/checkout@v4
       - name: Validate unified BAT launcher without starting services
         shell: cmd
-        run: Start-ViePN.bat --self-test
+        run: |
+          Start-ViePN.bat --self-test
+          Update-ViePN.bat --self-test
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
@@ -88,7 +90,7 @@ jobs:
           assert digest in Path("dist/ViePN-Windows-Portable.sha256").read_text()
           with zipfile.ZipFile(p) as z:
               m=json.loads(z.read("manifest.json"))
-              assert m["version"]=="2.1.1"
+              assert m["version"]=="2.1.2"
               assert len(m["files"])>=15
               for name, sha in m["files"].items():
                   assert hashlib.sha256(z.read(name)).hexdigest()==sha

@@ -7,6 +7,8 @@ final class ManagerModel: ObservableObject {
     @Published var token: String = SecureStore.token()
     @Published var overview: Overview?
     @Published var devices: [DeviceInfo] = []
+    @Published var devicesLoading = false
+    @Published var devicesError: String?
     @Published var diagnostic: DoctorReport?
     @Published var busy = false
     @Published var notice: String?
@@ -31,18 +33,47 @@ final class ManagerModel: ObservableObject {
     }
 
     func load() async {
-        guard isConfigured else { return }
+        guard isConfigured else {
+            devices = []
+            devicesError = "Chưa cấu hình kết nối đến Windows."
+            return
+        }
         busy = true
         defer { busy = false }
+        // Independent requests: a device-discovery error should not make
+        // the IPA library unavailable, or be silently rendered as zero devices.
+        async let loaded: Overview = client.get("/overview", as: Overview.self)
+        async let connected: [DeviceInfo] = client.devices()
         do {
-            async let loaded: Overview = client.get("/overview", as: Overview.self)
-            async let connected: [DeviceInfo] = client.devices()
             overview = try await loaded
-            // A missing iPhone must not prevent local IPA management.
-            devices = (try? await connected) ?? []
             error = nil
         } catch {
             self.error = error.localizedDescription
+        }
+        devicesLoading = true
+        do {
+            devices = try await connected
+            devicesError = nil
+        } catch {
+            devices = []
+            devicesError = error.localizedDescription
+        }
+        devicesLoading = false
+    }
+
+    func refreshDevices() async {
+        guard isConfigured else {
+            devicesError = "Chưa cấu hình kết nối Windows."
+            return
+        }
+        devicesLoading = true
+        defer { devicesLoading = false }
+        do {
+            devices = try await client.devices()
+            devicesError = nil
+        } catch {
+            devices = []
+            devicesError = error.localizedDescription
         }
     }
 

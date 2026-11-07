@@ -1,13 +1,15 @@
 from __future__ import annotations
 import asyncio
+import ipaddress
 import hmac
 import os
 import uuid
 from contextlib import asynccontextmanager
 from datetime import datetime, timezone
 from pathlib import Path
+from urllib.parse import urlsplit
 
-from fastapi import Depends, FastAPI, File, Header, HTTPException, UploadFile
+from fastapi import Depends, FastAPI, File, Header, HTTPException, UploadFile, Request
 from fastapi.responses import FileResponse
 from pydantic import BaseModel, Field
 
@@ -15,6 +17,7 @@ from .config import Settings, load_settings
 from .free_sign import ShareStore
 from .service import Manager
 from .native_sign import status as apple_account_status
+from .apple_auth import AppleAuthFlow
 from .tools import ExternalToolError, check_udid, connected_devices, installed_apps
 
 WEB_ROOT = Path(__file__).resolve().parents[2] / 'web'
@@ -45,6 +48,30 @@ class AppleSignPayload(BaseModel):
     udid: str
 
 
+class AppleAnisetteChoice(BaseModel):
+    mode: str
+    server: str | None = None
+    consent: bool = False
+
+
+class AppleAccountLogin(BaseModel):
+    email: str
+    password: str
+
+
+class AppleAccountVerification(BaseModel):
+    challenge: str
+    code: str
+
+
+class AppleAccountSelection(BaseModel):
+    email: str
+
+
+class AppleAccountLogout(BaseModel):
+    email: str | None = None
+
+
 class RenewPayload(BaseModel):
     installation_id: str
 
@@ -53,6 +80,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     cfg = settings or load_settings()
     manager = Manager(cfg)
     ipa_shares = ShareStore(ttl_seconds=600)
+    apple_auth = AppleAuthFlow()
 
     @asynccontextmanager
     async def lifespan(_: FastAPI):
@@ -60,7 +88,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         yield
         await manager.stop()
 
-    app = FastAPI(title='ViePN iOS Manager', version='1.2.0', lifespan=lifespan,
+    app = FastAPI(title='ViePN iOS Manager', version='1.3.0', lifespan=lifespan,
                   docs_url=None, redoc_url=None, openapi_url=None)
     app.state.manager = manager
 
@@ -69,6 +97,30 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         if not authorization or not hmac.compare_digest(authorization, expected):
             raise HTTPException(status_code=401, detail='Authentication required')
 
+    def local_apple_control(request: Request):
+        """Protect Apple credentials and account controls from LAN access/CSRF.
+
+        Must use localhost on a ViePN instance bound only to loopback. The
+        existing bearer token is still required for every endpoint.
+        """
+        if cfg.host not in ('127.0.0.1', 'localhost', '::1'):
+            raise HTTPException(403, detail='Apple account control requires a loopback-only server')
+        try:
+            peer = ipaddress.ip_address(request.client.host if request.client else '')
+            address = ipaddress.ip_address(request.url.hostname or '')
+        except ValueError:
+            raise HTTPException(403, detail='Open ViePN directly at http://127.0.0.1:8765')
+        if not (peer.is_loopback and address.is_loopback):
+            raise HTTPException(403, detail='Apple account control is local to this Windows computer')
+        if request.method != 'GET':
+            origin = request.headers.get('origin')
+            if not origin:
+                raise HTTPException(403, detail='A local browser Origin is required')
+            parsed = urlsplit(origin)
+            if (parsed.scheme != 'http' or parsed.hostname != request.url.hostname
+                    or parsed.port != request.url.port):
+                raise HTTPException(403, detail='Cross-origin Apple account action blocked')
+
     @app.get('/')
     def index():
         return FileResponse(WEB_ROOT / 'index.html', headers={'Cache-Control': 'no-store',
@@ -76,7 +128,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
 
     @app.get('/api/health')
     def health():
-        return {'ok': True, 'service': 'ViePN iOS Manager', 'version': '1.2.0'}
+        return {'ok': True, 'service': 'ViePN iOS Manager', 'version': '1.3.0'}
 
     @app.get('/api/overview', dependencies=[Depends(auth)])
     def overview():
@@ -200,6 +252,59 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     async def apple_status():
         # Never return password, two-factor challenge, account session or token.
         return await asyncio.to_thread(apple_account_status)
+
+    @app.get('/api/apple/accounts', dependencies=[Depends(auth), Depends(local_apple_control)])
+    async def apple_accounts():
+        return await asyncio.to_thread(apple_auth.status)
+
+    @app.post('/api/apple/auth/configure', dependencies=[Depends(auth), Depends(local_apple_control)])
+    async def apple_configure(payload: AppleAnisetteChoice):
+        try:
+            return await asyncio.to_thread(
+                apple_auth.configure, payload.mode, payload.server, payload.consent)
+        except (ValueError, RuntimeError) as exc:
+            raise HTTPException(400, detail=str(exc)) from None
+
+    @app.post('/api/apple/auth/login', dependencies=[Depends(auth), Depends(local_apple_control)])
+    async def apple_login(payload: AppleAccountLogin):
+        try:
+            async with manager.lock:
+                return await asyncio.to_thread(apple_auth.begin, payload.email, payload.password)
+        except ValueError as exc:
+            raise HTTPException(400, detail=str(exc)) from None
+        except Exception:
+            # Never echo Apple API responses or credential-bearing exceptions.
+            raise HTTPException(502, detail='Apple login failed. Check your Apple ID and anisette configuration') from None
+
+    @app.post('/api/apple/auth/verify', dependencies=[Depends(auth), Depends(local_apple_control)])
+    async def apple_verify(payload: AppleAccountVerification):
+        try:
+            async with manager.lock:
+                return await asyncio.to_thread(apple_auth.verify, payload.challenge, payload.code)
+        except ValueError as exc:
+            raise HTTPException(400, detail=str(exc)) from None
+        except Exception:
+            raise HTTPException(502, detail='Apple verification failed or expired') from None
+
+    @app.post('/api/apple/auth/switch', dependencies=[Depends(auth), Depends(local_apple_control)])
+    async def apple_switch(payload: AppleAccountSelection):
+        try:
+            async with manager.lock:
+                return await asyncio.to_thread(apple_auth.switch, payload.email)
+        except Exception:
+            raise HTTPException(400, detail='Could not select this signed-in Apple ID') from None
+
+    @app.post('/api/apple/auth/logout', dependencies=[Depends(auth), Depends(local_apple_control)])
+    async def apple_logout(payload: AppleAccountLogout):
+        try:
+            async with manager.lock:
+                return await asyncio.to_thread(apple_auth.logout, payload.email)
+        except Exception:
+            raise HTTPException(400, detail='Could not sign out this Apple ID') from None
+
+    @app.post('/api/apple/auth/cancel', dependencies=[Depends(auth), Depends(local_apple_control)])
+    async def apple_cancel():
+        return await asyncio.to_thread(apple_auth.cancel)
 
     @app.post('/api/apple/sign', dependencies=[Depends(auth)])
     async def apple_sign(payload: AppleSignPayload):

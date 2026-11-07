@@ -74,6 +74,12 @@ class Database:
                 db.execute("ALTER TABLE installations ADD COLUMN signing_mode TEXT NOT NULL DEFAULT 'legacy'")
             if 'apple_account' not in columns:
                 db.execute("ALTER TABLE installations ADD COLUMN apple_account TEXT")
+            if 'retry_failures' not in columns:
+                db.execute("ALTER TABLE installations ADD COLUMN retry_failures INTEGER NOT NULL DEFAULT 0")
+            job_columns = {row['name'] for row in db.execute('PRAGMA table_info(jobs)')}
+            if 'retry_of' not in job_columns:
+                db.execute("ALTER TABLE jobs ADD COLUMN retry_of TEXT")
+
             # Compatibility with early experimental mode encoding (auto_renew=2).
             db.execute("""UPDATE installations
                        SET signing_mode='apple_personal', auto_renew=1

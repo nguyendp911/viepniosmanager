@@ -7,6 +7,7 @@ final class ManagerModel: ObservableObject {
     @Published var token: String = SecureStore.token()
     @Published var overview: Overview?
     @Published var devices: [DeviceInfo] = []
+    @Published var diagnostic: DoctorReport?
     @Published var busy = false
     @Published var notice: String?
     @Published var error: String?
@@ -91,6 +92,26 @@ final class ManagerModel: ObservableObject {
         }
     }
 
+    func checkConnection() async {
+        guard isConfigured else { error = "Vui lòng cấu hình máy chủ"; return }
+        do {
+            diagnostic = try await client.get("/doctor", as: DoctorReport.self)
+            error = nil
+        } catch {
+            error = error.localizedDescription
+        }
+    }
+
+    func retryJob(_ id: String) async {
+        await execute { c in
+            let reply: JobResponse = try await c.post(
+                "/jobs/\(id)/retry", body: RetryJobBody(confirm: "RETRY JOB"),
+                as: JobResponse.self
+            )
+            return "Đã gửi lại tác vụ: \(reply.jobId.prefix(8))"
+        }
+    }
+
     func uploadIPA(_ url: URL) async {
         await execute { c in
             try await c.upload("/ipas", fileURL: url, as: url.lastPathComponent)
@@ -150,3 +171,5 @@ private struct DeleteIPAReply: Decodable {
 
 private struct ChannelIPABody: Encodable { let channel: String }
 private struct ChannelIPAReply: Decodable { let id: String; let channel: String }
+
+private struct RetryJobBody: Encodable { let confirm: String }

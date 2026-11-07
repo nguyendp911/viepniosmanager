@@ -30,6 +30,19 @@ powershell -ExecutionPolicy Bypass -File .\windows\start.ps1
 
 Mở `http://127.0.0.1:8765`, đăng nhập bằng access token ViePN, chọn tab **Apple ID miễn phí**. Chọn IPA + iPhone, rồi bấm **Ký IPA** hoặc **Ký + cài iPhone**. Sử dụng mục Gia hạn hoặc nút Gia hạn tất cả để chạy ký mới theo yêu cầu.
 
+## Đăng nhập, đăng xuất và chuyển Apple ID ngay trên dashboard
+
+Tại **http://127.0.0.1:8765** → tab **Apple ID miễn phí**, sau khi nhập access token quản trị:
+
+1. Chọn cấu hình anisette đã lưu, máy chủ HTTPS của bạn hoặc **chủ động đồng ý** sử dụng nhà cung cấp cộng đồng.
+2. Nhập Apple ID và mật khẩu → nhấn **Đăng nhập Apple ID**. Nếu Apple yêu cầu xác minh, nhập mã **2FA 6 số** vào biểu mẫu vừa xuất hiện → **Xác minh**.
+3. Khi đăng nhập thành công, tài khoản sẽ nằm trong danh sách **Tài khoản đã đăng nhập**. Chọn tài khoản khác và nhấn **Chuyển tài khoản** để dùng phiên đã lưu, không cần nhập lại mật khẩu nếu phiên còn hiệu lực.
+4. Nhấn **Đăng xuất tài khoản chọn** hoặc **Đăng xuất tất cả** để xóa phiên Apple đã lưu trên Windows. **Không xóa file IPA, dữ liệu cài đặt hoặc ứng dụng trên iPhone**. Khi cần dùng lại chỉ cần đăng nhập lại (Apple có thể yêu cầu 2FA).
+
+**Bảo mật:** Các endpoint quản lý tài khoản có xác thực bearer token, kiểm tra Origin và chỉ hoạt động khi server lắng nghe trên **loopback** (127.0.0.1/localhost). Nếu ViePN đang bật LAN (ví dụ `VIEPN_HOST=0.0.0.0`), biểu mẫu sẽ từ chối thao tác; chuyển server về localhost hoặc dùng `windows/apple-login.ps1` trên máy Windows. Mật khẩu không được ghi vào database; khi 2FA được yêu cầu, mật khẩu tồn tại tạm trong bộ nhớ tiến trình tối đa 5 phút hoặc đến khi xác minh, hủy, hay đăng xuất. Phiên xác thực Apple vẫn được lưu tại dữ liệu người dùng Windows như trước.
+
+Khi nhiều Apple ID đã đăng nhập, mỗi ứng dụng được gắn với tài khoản đã dùng để ký để tránh ký nhầm khi gia hạn. Những bản cài từ trước khi có trường thông tin này có thể cần đăng nhập đúng tài khoản ban đầu.
+
 ## Mac-generated anisette: giới hạn kỹ thuật quan trọng
 
 Apple không công bố API cho Personal Team đăng nhập/cấp profile ngoài Xcode, và thay đổi xác thực từ tháng 10/2026. Quy trình GrandSlam cần dữ liệu anisette kiểu Mac. Windows không thể đảm bảo tự tạo dữ liệu được Apple chấp nhận chỉ từ Apple ID.

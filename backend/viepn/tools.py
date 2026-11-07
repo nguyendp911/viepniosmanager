@@ -38,17 +38,46 @@ def pm3() -> list[str]:
 
 
 def connected_devices() -> list[dict[str, Any]]:
+    """Normalize pymobiledevice3 usbmux formats for Windows web/iOS clients.
+
+    Current pymobiledevice3 reports Identifier, UniqueDeviceID, DeviceName.
+    Older usbmux replies can include nested Properties.SerialNumber.
+    """
     raw = run(pm3() + ['usbmux', 'list'], timeout=25)
     try:
         doc = json.loads(raw)
     except json.JSONDecodeError as e:
         raise ExternalToolError('Device tool did not return JSON; update pymobiledevice3') from e
     if isinstance(doc, dict):
-        doc = doc.get('devices') or doc.get('Devices') or []
+        doc = doc.get('devices') or doc.get('Devices') or doc.get('DeviceList') or []
     if not isinstance(doc, list):
         raise ExternalToolError('Unexpected device list response')
-    return doc
 
+    devices = []
+    seen = set()
+    for entry in doc:
+        item = entry if isinstance(entry, dict) else {}
+        props = item.get('Properties') if isinstance(item.get('Properties'), dict) else {}
+        udid = next((v.strip() for source in (item, props)
+                     for key in ('UniqueDeviceID', 'Identifier', 'udid', 'identifier',
+                                 'SerialNumber', 'serial_number', 'serial')
+                     if isinstance(v := source.get(key), str) and v.strip()), None)
+        if not udid and isinstance(entry, str):
+            udid = entry.strip()
+        if not udid or udid in seen:
+            continue
+        seen.add(udid)
+        name = next((v.strip() for source in (item, props)
+                     for key in ('DeviceName', 'device_name', 'name')
+                     if isinstance(v := source.get(key), str) and v.strip()), 'iPhone / iPad')
+        data = dict(item)
+        data.update({'udid': udid, 'name': name})
+        devices.append(data)
+    if doc and not devices:
+        raise ExternalToolError(
+            'Device found but no usable identifier. Check pymobiledevice3 version.'
+        )
+    return devices
 
 def installed_apps(udid: str) -> dict:
     check_udid(udid)

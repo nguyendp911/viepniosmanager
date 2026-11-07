@@ -378,7 +378,7 @@ private struct LibraryView: View {
                 await model.refreshDevices()
             }
         }
-        .onChange(of: model.devices.map(\.id)) { _, ids in
+        .onChange(of: model.devices.map(\.id)) { ids in
             if !selectedDevice.isEmpty && !ids.contains(selectedDevice) {
                 selectedDevice = ""
             }

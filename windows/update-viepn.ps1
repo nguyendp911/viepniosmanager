@@ -69,9 +69,9 @@ function Stop-OwnViePN {
     foreach ($port in @(8765, 8766)) {
         $connections = @(Get-NetTCPConnection -State Listen -LocalPort $port -ErrorAction SilentlyContinue)
         foreach ($socket in $connections) {
-            $pid = [int]$socket.OwningProcess
-            if ($pid -le 0) { continue }
-            $info = Get-CimInstance Win32_Process -Filter "ProcessId=$pid" -ErrorAction SilentlyContinue
+            $processId = [int]$socket.OwningProcess
+            if ($processId -le 0) { continue }
+            $info = Get-CimInstance Win32_Process -Filter "ProcessId=$processId" -ErrorAction SilentlyContinue
             if (-not $info) {
                 throw "Port $port is occupied. Close ViePN manually before updating."
             }
@@ -83,7 +83,7 @@ function Stop-OwnViePN {
             if (-not $trusted) {
                 throw "Port $port is held by a process not recognized as ViePN. Close it manually; updater will not terminate it."
             }
-            if ($busy -notcontains $pid) { $busy += $pid }
+            if ($busy -notcontains $processId) { $busy += $processId }
         }
     }
     if ($busy.Count -eq 0) { return }

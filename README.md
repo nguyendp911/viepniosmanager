@@ -1,4 +1,4 @@
-# ViePN iOS Manager 1.2 — Apple ID miễn phí, ký trực tiếp trên Windows
+# ViePN iOS Manager 1.3 — Apple ID miễn phí, ký trực tiếp trên Windows
 
 ViePN là công cụ Windows + web dashboard để **đọc IPA, kết nối iPhone, xác thực Apple ID miễn phí (2FA), xin provisioning profile, ký IPA, cài lên iPhone và gia hạn trước khi hết 7 ngày**. Không cần cài ứng dụng SideStore/AltStore/iLoader.
 
@@ -13,14 +13,16 @@ ViePN là công cụ Windows + web dashboard để **đọc IPA, kết nối iPh
 cd C:\ViePN-iOS-Manager
 git pull origin main
 powershell -ExecutionPolicy Bypass -File .\windows\setup.ps1
-powershell -ExecutionPolicy Bypass -File .\windows\apple-login.ps1
 powershell -ExecutionPolicy Bypass -File .\windows\start.ps1
 ```
 
 Nếu dùng ZIP (không có thư mục `.git`), tải bản mới từ GitHub và thay phần mã nguồn, **không xóa** `%LOCALAPPDATA%\ViePN-iOS-Manager` chứa token, IPA và phiên Apple. Khi cập nhật chương trình, dừng server cũ bằng `Ctrl+C`.
 
 3. Mở `http://127.0.0.1:8765`. Access token dashboard nằm trong `%LOCALAPPDATA%\ViePN-iOS-Manager\access_token.txt`.
-4. Tab **Apple ID miễn phí**: chọn IPA, chọn iPhone → **Ký IPA** hoặc **Ký + cài iPhone**. Theo dõi trong **Nhật ký hoạt động**. Không nhập Apple ID/password/2FA vào dashboard.
+4. Vào tab **Apple ID miễn phí** tại **http://127.0.0.1:8765**: chọn máy chủ anisette riêng hoặc đồng ý dùng dịch vụ cộng đồng, nhập Apple ID, mật khẩu và mã 2FA nếu Apple yêu cầu; sau đó chọn IPA, iPhone → **Ký IPA** hoặc **Ký + cài iPhone**. Theo dõi trong **Nhật ký hoạt động**. Chỉ nhập Apple ID khi dashboard chạy trên localhost; không đăng nhập qua mạng LAN.
+5. **Đăng xuất và đăng nhập lại:** Trong cùng tab, chọn tài khoản rồi nhấn **Đăng xuất tài khoản chọn** (hoặc **Đăng xuất tất cả**). Khi cần dùng lại, nhập Apple ID và 2FA nếu được yêu cầu. Dữ liệu IPA và bản cài vẫn được giữ nguyên. Có thể dùng nút **Chuyển tài khoản** để chọn Apple ID đã lưu phiên; không cần đăng nhập lại nếu phiên còn hiệu lực.
+
+Nếu không muốn nhập tài khoản trong trình duyệt, cách nhập 2FA bằng PowerShell vẫn được hỗ trợ: `powershell -ExecutionPolicy Bypass -File .\windows\apple-login.ps1`.
 
 ## Khởi động nhanh và xóa IPA khỏi thư viện (Windows)
 
@@ -49,7 +51,7 @@ Việc giao tiếp Apple Developer Services sử dụng mã nguồn tích hợp 
 
 **Anisette kiểu Mac** vẫn cần để xác thực tài khoản. Theo những thay đổi Apple gần đây, không thể đảm bảo Windows tự tạo anisette được Apple chấp nhận mà không có Mac. ViePN yêu cầu bạn chọn **máy chủ riêng của bạn** hoặc **đồng ý rõ ràng** cho phép dùng nhà cung cấp anisette cộng đồng; không âm thầm gửi kết nối. Dịch vụ cộng đồng không nhận mật khẩu, mã 2FA hoặc token Apple, nhưng thấy IP/định danh thiết bị được cấp. Không có chọn lựa nào thì đăng nhập sẽ dừng an toàn. Vậy nên **đây chưa phải giải pháp 100% tự chủ toàn bộ dịch vụ từ Windows**.
 
-Không lưu mật khẩu Apple trong web hoặc GitHub; phiên đăng nhập được lưu tại `%LOCALAPPDATA%\ViePN-iOS-Manager\session` theo tài khoản Windows. Không công khai cổng TCP 8765.
+Mật khẩu Apple chỉ được giữ tạm trong bộ nhớ backend để hoàn tất 2FA (tối đa 5 phút) và không được lưu trong SQLite; không lưu mật khẩu vào GitHub. Trang đăng nhập chỉ hoạt động khi server bind localhost và URL browser cũng là localhost; phiên xác thực Apple được lưu tại `%LOCALAPPDATA%\ViePN-iOS-Manager\session` theo tài khoản Windows. Không công khai cổng TCP 8765.
 
 ## Giới hạn tài khoản miễn phí
 
@@ -63,10 +65,11 @@ ViePN iOS dùng AppIcon mang logo chiếc khiên neon do chủ dự án cung c�
 
 ## Cấu trúc
 
-- `backend/viepn/native_sign.py` — đăng nhập terminal, cấp profile, ký IPA.
+- `backend/viepn/native_sign.py` — đăng nhập terminal, cấu hình anisette, cấp profile, ký IPA.
+- `backend/viepn/apple_auth.py` — quản lý đăng nhập lại, 2FA, chuyển tài khoản và đăng xuất cục bộ qua API localhost.
 - `backend/viepn/applekit/` — Apple auth/GSA + developer services, MIT attribution.
 - `backend/viepn/service.py` — quản lý signing jobs, cài đặt và scheduler.
-- `backend/viepn/api.py` — dashboard APIs (không nhận Apple ID password).
+- `backend/viepn/api.py` — dashboard APIs; các endpoint tài khoản nhạy cảm chỉ cho localhost có access token và cùng Origin.
 - `web/index.html` — dashboard và tab Apple ID miễn phí.
 - `windows/apple-login.ps1` — đăng nhập Apple ID/2FA tại máy tính.
 - `windows/register-auto-renew.ps1` — tạo Windows Scheduled Task.

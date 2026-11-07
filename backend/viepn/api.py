@@ -94,6 +94,10 @@ class DeleteIPARequest(BaseModel):
     confirm: str
 
 
+class RetryJobPayload(BaseModel):
+    confirm: str
+
+
 class RenewPayload(BaseModel):
     installation_id: str
 
@@ -110,7 +114,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         yield
         await manager.stop()
 
-    app = FastAPI(title='ViePN iOS Manager', version='1.7.0', lifespan=lifespan,
+    app = FastAPI(title='ViePN iOS Manager', version='1.8.0', lifespan=lifespan,
                   docs_url=None, redoc_url=None, openapi_url=None)
     app.state.manager = manager
 
@@ -150,7 +154,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
 
     @app.get('/api/health')
     def health():
-        return {'ok': True, 'service': 'ViePN iOS Manager', 'version': '1.7.0'}
+        return {'ok': True, 'service': 'ViePN iOS Manager', 'version': '1.8.0'}
 
     @app.get('/api/overview', dependencies=[Depends(auth)])
     def overview():
@@ -452,6 +456,17 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         ids = manager.db.query("SELECT id FROM installations WHERE signing_mode='apple_personal'")
         return {'queued_job_ids': [manager.submit('renew', {'installation_id': row['id']})
                                    for row in ids]}
+
+    @app.post('/api/jobs/{job_id}/retry', dependencies=[Depends(auth)])
+    async def retry_failed_job(job_id: str, payload: RetryJobPayload):
+        if payload.confirm != 'RETRY JOB':
+            raise HTTPException(400, detail='Explicit retry confirmation required')
+        async with manager.lock:
+            try:
+                new_id = manager.retry_job(job_id)
+            except ValueError as exc:
+                raise HTTPException(409, detail=str(exc)) from exc
+        return {'job_id': new_id}
 
     @app.post('/api/renew', dependencies=[Depends(auth)])
     async def renew(payload: RenewPayload):

@@ -156,6 +156,8 @@ private struct LibraryView: View {
     @State private var selectedDevice = ""
     @State private var resign = false
     @State private var autoRenew = true
+    @State private var buildQuery = ""
+    @State private var buildChannel = "all"
     @State private var editingBuildID = ""
     @State private var editingBuildName = ""
     @State private var showRenamePrompt = false
@@ -179,6 +181,18 @@ private struct LibraryView: View {
                 }
                 Text("Các bản build trùng tên được phân biệt bằng mã SHA, ngày nhập và hạn profile. Bạn có thể đổi tên riêng cho từng bản.")
                     .font(.caption).foregroundStyle(Palette.secondary)
+                TextField("Tìm theo tên, bundle ID, phiên bản, SHA...", text: $buildQuery)
+                    .textInputAutocapitalization(.never)
+                    .autocorrectionDisabled()
+                    .textFieldStyle(.roundedBorder)
+                Picker("Nhóm bản build", selection: $buildChannel) {
+                    Text("Tất cả").tag("all")
+                    Text("Stable").tag("stable")
+                    Text("Test").tag("test")
+                    Text("Dev").tag("dev")
+                    Text("Archive").tag("archive")
+                    Text("Chưa phân loại").tag("unassigned")
+                }.tint(.white)
                 if let ipas = model.overview?.ipas, !ipas.isEmpty {
                     Button(role: .destructive) {
                         pendingDeleteAll = true
@@ -188,7 +202,14 @@ private struct LibraryView: View {
                         Label("Xóa toàn bộ IPA (kể cả có profile)", systemImage: "trash")
                             .frame(maxWidth: .infinity)
                     }.buttonStyle(.bordered).disabled(model.busy)
-                    ForEach(ipas) { ipa in
+                    ForEach(ipas.filter { ipa in
+                        let matchChannel = buildChannel == "all" || (ipa.channel ?? "unassigned") == buildChannel
+                        let query = buildQuery.trimmingCharacters(in: .whitespacesAndNewlines)
+                        let matchText = query.isEmpty ||
+                            [ipa.name, ipa.alias ?? "", ipa.bundleId, ipa.version ?? "", ipa.id]
+                                .contains(where: { $0.localizedCaseInsensitiveContains(query) })
+                        return matchChannel && matchText
+                    }) { ipa in
                         VStack(alignment: .leading, spacing: 7) {
                             Text(ipa.alias ?? ipa.name)
                                 .font(.subheadline.bold())
@@ -212,6 +233,15 @@ private struct LibraryView: View {
                                     .font(.caption2).foregroundStyle(.orange)
                             }
                             HStack {
+                                Menu {
+                                    ForEach(["unassigned", "dev", "test", "stable", "archive"], id: \.self) { channel in
+                                        Button(channel.uppercased()) {
+                                            Task { await model.classifyIPA(id: ipa.id, channel: channel) }
+                                        }
+                                    }
+                                } label: {
+                                    Label((ipa.channel ?? "unassigned").uppercased(), systemImage: "tag")
+                                }.buttonStyle(.bordered)
                                 Button("Đổi tên") {
                                     editingBuildID = ipa.id
                                     editingBuildName = ipa.alias ?? ""

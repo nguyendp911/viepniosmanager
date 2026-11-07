@@ -36,6 +36,9 @@ jobs:
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
+      - name: Validate unified BAT launcher without starting services
+        shell: cmd
+        run: Start-ViePN.bat --self-test
       - name: Parse PowerShell launcher scripts
         shell: pwsh
         run: |

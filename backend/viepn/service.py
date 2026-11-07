@@ -12,6 +12,7 @@ from .config import Settings
 from .db import Database, utcnow
 from .ipa import inspect_ipa, parse_provision, profile_compatible, sha256_file
 from .tools import connected_devices, install_signed_ipa, sign_with_zsign
+from .native_sign import sign_free_ipa
 
 
 class Manager:
@@ -110,7 +111,7 @@ class Manager:
             temp.unlink(missing_ok=True)
 
     def submit(self, kind: str, payload: dict) -> str:
-        if kind not in ('install', 'sign', 'renew'):
+        if kind not in ('install', 'sign', 'renew', 'apple_install', 'apple_sign'):
             raise ValueError('Unknown job type')
         job_id = uuid.uuid4().hex
         self.db.exec('''INSERT INTO jobs(id,kind,state,input_json,created_at,updated_at)
@@ -131,6 +132,10 @@ class Manager:
                     output = {'signed_ipa_id': signed['id'], 'expires_at': signed['profile_expires']}
                 elif job['kind'] == 'install':
                     output = await self._install(params)
+                elif job['kind'] == 'apple_install':
+                    output = await self._apple_install(params)
+                elif job['kind'] == 'apple_sign':
+                    output = await self._apple_sign(params)
                 else:
                     output = await self._renew(params['installation_id'])
             except Exception as exc:
@@ -142,6 +147,79 @@ class Manager:
             self.db.exec('UPDATE jobs SET state=?,output_json=?,updated_at=? WHERE id=?',
                          ('succeeded', json.dumps(output), utcnow(), job_id))
             self.db.event('job_succeeded', job['kind'])
+
+    async def _apple_sign(self, params: dict) -> dict:
+        """Obtain a fresh Apple Personal Team profile and sign without other apps."""
+        ipa = self.db.one('SELECT * FROM ipa WHERE id=?', (params['ipa_id'],))
+        if not ipa:
+            raise ValueError('Source IPA not found')
+        udid = str(params['udid'])
+        temp = self.cfg.root / 'incoming' / f'{uuid.uuid4().hex}.ipa'
+        try:
+            details = await asyncio.to_thread(
+                sign_free_ipa, Path(ipa['file_path']), temp, udid
+            )
+            signed = self.add_ipa(temp)
+            return {
+                'signed_ipa_id': signed['id'],
+                'source_ipa_id': ipa['id'],
+                'bundle_id': details['bundle_id'],
+                'expires_at': signed['profile_expires'],
+                'account': details.get('account'),
+            }
+        finally:
+            temp.unlink(missing_ok=True)
+
+    async def _apple_install(self, params: dict) -> dict:
+        """Apple GSA -> provisioning -> sign -> install; native ViePN pipeline."""
+        result = await self._apple_sign(params)
+        installed = await self._install({
+            'ipa_id': result['signed_ipa_id'],
+            'udid': params['udid'],
+            'resign': False,
+            'auto_renew': bool(params.get('auto_renew', True)),
+        })
+        self.db.exec('''UPDATE installations SET source_ipa_id=?,
+                       auto_renew=? WHERE id=?''',
+                     (result['source_ipa_id'],
+                      2 if params.get('auto_renew', True) else 0,
+                      installed['installation_id']))
+        return {**installed, 'signing_mode': 'free_apple_id',
+                'signed_ipa_id': result['signed_ipa_id']}
+
+    async def _apple_renew(self, install: dict) -> dict:
+        """Issue NEW Personal Team profile and re-sign original IPA before 7d."""
+        installation_id = install['id']
+        self.db.exec('UPDATE installations SET last_attempt=?,state=? WHERE id=?',
+                     (utcnow(), 'renewing', installation_id))
+        try:
+            result = await self._apple_sign({
+                'ipa_id': install['source_ipa_id'],
+                'udid': install['device_udid'],
+            })
+            if not result.get('expires_at'):
+                raise ValueError('Apple did not provide expiry of renewed profile')
+            previous = datetime.fromisoformat(install['expires_at'])
+            refreshed = datetime.fromisoformat(result['expires_at'])
+            if refreshed <= previous:
+                raise ValueError('Apple did not issue a newer provisioning profile')
+            outcome = await self._install({
+                'ipa_id': result['signed_ipa_id'],
+                'udid': install['device_udid'],
+                'resign': False,
+                'auto_renew': True,
+            })
+            self.db.exec('''UPDATE installations SET source_ipa_id=?,auto_renew=2,
+                           current_ipa_id=?,expires_at=?,state='active',
+                           last_success=?,last_error=NULL WHERE id=?''',
+                         (install['source_ipa_id'], result['signed_ipa_id'],
+                          result['expires_at'], utcnow(), installation_id))
+            return {**outcome, 'signing_mode': 'free_apple_id',
+                    'expires_at': result['expires_at']}
+        except Exception as exc:
+            self.db.exec('UPDATE installations SET state=?,last_error=? WHERE id=?',
+                         ('needs_attention', str(exc)[:1500], installation_id))
+            raise
 
     async def _install(self, params: dict) -> dict:
         ipa = self.db.one('SELECT * FROM ipa WHERE id=?', (params['ipa_id'],))
@@ -180,6 +258,8 @@ class Manager:
         install = self.db.one('SELECT * FROM installations WHERE id=?', (installation_id,))
         if not install:
             raise ValueError('Installation not found')
+        if int(install.get('auto_renew') or 0) == 2:
+            return await self._apple_renew(install)
         self.db.exec('UPDATE installations SET last_attempt=?,state=? WHERE id=?',
                      (utcnow(), 'renewing', installation_id))
         try:
@@ -199,7 +279,7 @@ class Manager:
     def due_installations(self) -> list[dict]:
         now = datetime.now(timezone.utc)
         cutoff = now + timedelta(hours=self.cfg.renewal_hours)
-        rows = self.db.query('SELECT * FROM installations WHERE auto_renew=1')
+        rows = self.db.query('SELECT * FROM installations WHERE auto_renew IN (1,2)')
         result = []
         for r in rows:
             try:

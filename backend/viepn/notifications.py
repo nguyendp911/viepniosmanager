@@ -22,10 +22,10 @@ from .db import Database, utcnow
 
 NTFY_HOST = "https://ntfy.sh"
 ALLOWED_KINDS = {
-    "expiry_soon": ("ViePN: sắp hết hạn", "Một ứng dụng sẽ hết hạn chữ ký trong vòng 48 giờ.", 4),
-    "sign_failed": ("ViePN: tác vụ thất bại", "Một tác vụ ký, cài đặt hoặc gia hạn đã thất bại. Mở ViePN để xem chi tiết.", 4),
-    "renewed": ("ViePN: gia hạn thành công", "Một ứng dụng đã gia hạn chữ ký thành công.", 3),
-    "test": ("ViePN: thử thông báo", "Kết nối thông báo trên iPhone đang hoạt động.", 3),
+    "expiry_soon": ("ViePN: Expiring soon", "Một ứng dụng sẽ hết hạn chữ ký trong vòng 48 giờ.", 4),
+    "sign_failed": ("ViePN: Task failed", "Một tác vụ ký, cài đặt hoặc gia hạn đã thất bại. Mở ViePN để xem chi tiết.", 4),
+    "renewed": ("ViePN: Renewal successful", "Một ứng dụng đã gia hạn chữ ký thành công.", 3),
+    "test": ("ViePN: Test notification", "Kết nối thông báo trên iPhone đang hoạt động.", 3),
 }
 
 

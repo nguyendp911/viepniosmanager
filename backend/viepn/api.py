@@ -208,7 +208,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
 
     @app.post('/api/apple/refresh-all', dependencies=[Depends(auth)])
     async def apple_refresh_all():
-        ids = manager.db.query('SELECT id FROM installations WHERE signing_mode='apple_personal'')
+        ids = manager.db.query("SELECT id FROM installations WHERE signing_mode='apple_personal'")
         return {'queued_job_ids': [manager.submit('renew', {'installation_id': row['id']})
                                    for row in ids]}
 

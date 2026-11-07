@@ -211,7 +211,8 @@ async function removeIPAs(ids,all=false){
  const typed=window.prompt('Xác nhận lần cuối: nhập chính xác '+phrase+' để xóa');
  if(typed!==phrase){notify('Đã hủy thao tác xóa');return;}
  const result=await post('/ipas/bulk-delete',{all,ipa_ids:all?[]:ids,force,confirm:phrase});
- notify('Đã xóa '+result.deleted_ids.length+' IPA, hủy '+result.tracking_removed+' lịch gia hạn');
+ notify('Đã xóa '+result.deleted_ids.length+' IPA, hủy '+result.tracking_removed+' lịch gia hạn'+
+  (result.pending_file_deletes?' · '+result.pending_file_deletes+' file đang bị Windows khóa, sẽ dọn khi mở khóa/khởi động lại ViePN':''));
  await load();
 }
 $('buildSearch').addEventListener('input',event=>{buildSearchState.query=event.target.value;render();});

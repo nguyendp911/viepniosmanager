@@ -38,7 +38,7 @@ _RULES = (
     ("POST", re.compile(r"^/api/renew/check$")),
 )
 
-_RESPONSE_HEADERS = ("content-type", "content-disposition", "cache-control", "etag")
+_RESPONSE_HEADERS = ("content-type", "content-disposition", "content-security-policy", "cache-control", "etag")
 
 
 def allowed(method: str, path: str) -> bool:

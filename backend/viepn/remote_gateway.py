@@ -27,6 +27,8 @@ _RULES = (
     ("GET", re.compile(r"^/api/apple/status$")),
     ("GET", re.compile(r"^/api/ipa/[A-Za-z0-9]{1,64}/download$")),
     ("POST", re.compile(r"^/api/ipas$")),
+    ("POST", re.compile(r"^/api/ipas/bulk-delete$")),
+    ("PATCH", re.compile(r"^/api/ipas/[A-Za-z0-9]{1,64}/label$")),
     ("DELETE", re.compile(r"^/api/ipas/[A-Za-z0-9]{1,64}$")),
     ("POST", re.compile(r"^/api/profiles$")),
     ("POST", re.compile(r"^/api/install$")),

@@ -72,6 +72,23 @@ Muốn thực sự cài/refresh IPA từ Windows, iPhone cần được kết n�
 
 Cần Windows bật, Tailscale Windows kết nối và gateway hoạt động. Sau khi restart máy, bạn có thể chạy lại `Start-ViePN-Remote.bat`. Cấu hình Tailscale Serve dùng `--bg` sẽ tiếp tục trên Tailscale, nhưng cả ViePN backend và gateway cũng phải chạy.
 
+## Tự khởi động kết nối từ xa sau khi đăng nhập Windows
+
+Sau **một lần** thiết lập Tailscale Serve thành công bằng `Start-ViePN-Remote.bat`, có thể tạo tác vụ tự chạy sau mỗi lần đăng nhập Windows:
+
+```powershell
+cd C:\ViePN-iOS-Manager
+powershell -ExecutionPolicy Bypass -File .\windows\register-remote-autostart.ps1
+```
+
+Tác vụ chờ 45 giây để Tailscale Windows kịp kết nối, rồi kiểm tra/khởi chạy backend, gateway và Serve. Đây là tác vụ theo tài khoản người dùng đã đăng nhập: nó không hoạt động nếu máy đã tắt, Windows chưa đăng nhập, máy vào Sleep hoặc tài khoản Tailscale chưa kết nối.
+
+Để tắt tự khởi động, vào **Task Scheduler** và vô hiệu hóa `ViePN iOS Manager - Private Remote Control`; hoặc chạy:
+
+```powershell
+Unregister-ScheduledTask -TaskName "ViePN iOS Manager - Private Remote Control" -Confirm:$false
+```
+
 ## Kiểm tra và tắt kết nối từ xa
 
 Windows PowerShell:

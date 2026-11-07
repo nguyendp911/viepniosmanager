@@ -88,7 +88,9 @@ final class ManagerModel: ObservableObject {
                     confirm: all ? "DELETE ALL IPAS" : "DELETE SELECTED IPAS"
                 ), as: DeleteIPAReply.self
             )
-            return "Đã xóa \(result.deletedIds.count) IPA · hủy theo dõi \(result.trackingRemoved) bản cài"
+            return "Đã xóa \(result.deletedIds.count) IPA · hủy theo dõi \(result.trackingRemoved) bản cài" +
+                ((result.pendingFileDeletes ?? 0) > 0 ?
+                  " · \(result.pendingFileDeletes ?? 0) file bị Windows khóa, sẽ dọn sau." : "")
         }
     }
 
@@ -167,6 +169,7 @@ private struct DeleteIPAReply: Decodable {
     let deletedIds: [String]
     let filesRemoved: Int
     let trackingRemoved: Int
+    let pendingFileDeletes: Int?
 }
 
 private struct ChannelIPABody: Encodable { let channel: String }

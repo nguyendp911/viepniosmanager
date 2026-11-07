@@ -135,7 +135,7 @@ echo          Opt in, copy the private topic, subscribe in the ntfy app.
 if defined STATUS_FILE if exist "%STATUS_FILE%" del /q "%STATUS_FILE%" >nul 2>&1
 echo.
 echo [ViePN] All available services started. Keep the API windows open.
-pause
+if /i not "%~1"=="--auto" pause
 exit /b 0
 
 :check_loopback

@@ -230,14 +230,63 @@ class Manager:
         finally:
             temp.unlink(missing_ok=True)
 
-    def submit(self, kind: str, payload: dict) -> str:
+    def submit(self, kind: str, payload: dict, retry_of: str | None = None) -> str:
         if kind not in ('install', 'sign', 'renew', 'apple_install', 'apple_sign'):
             raise ValueError('Unknown job type')
+        serialized = json.dumps(payload, sort_keys=True)
+        if kind == 'renew':
+            for job in self.db.query("SELECT id,input_json FROM jobs WHERE kind='renew' AND state IN ('queued','running')"):
+                try:
+                    if json.loads(job['input_json']) == payload:
+                        return job['id']
+                except (ValueError, TypeError):
+                    pass
         job_id = uuid.uuid4().hex
-        self.db.exec('''INSERT INTO jobs(id,kind,state,input_json,created_at,updated_at)
-            VALUES(?,?,?,?,?,?)''', (job_id, kind, 'queued', json.dumps(payload), utcnow(), utcnow()))
+        self.db.exec('''INSERT INTO jobs(id,kind,state,input_json,created_at,updated_at,retry_of)
+            VALUES(?,?,?,?,?,?,?)''', (job_id, kind, 'queued', serialized, utcnow(), utcnow(), retry_of))
         asyncio.create_task(self._process(job_id))
         return job_id
+
+    def retry_job(self, job_id: str) -> str:
+        """User-confirmed retry for signing or renewal only; no auto reinstall."""
+        job = self.db.one('SELECT * FROM jobs WHERE id=?', (job_id,))
+        if not job or job['state'] != 'failed':
+            raise ValueError('Only failed jobs can be retried')
+        if job['kind'] not in ('sign', 'apple_sign', 'renew'):
+            raise ValueError('Installation jobs must be reviewed and started manually')
+        try:
+            payload = json.loads(job['input_json'])
+        except (ValueError, TypeError):
+            raise ValueError('Malformed job payload') from None
+        if not isinstance(payload, dict):
+            raise ValueError('Malformed job payload')
+        if job['kind'] == 'renew' and not self.db.one('SELECT id FROM installations WHERE id=?',
+                                                       (payload.get('installation_id'),)):
+            raise ValueError('Installation no longer tracked')
+        if job['kind'] in ('sign', 'apple_sign') and not self.db.one('SELECT id FROM ipa WHERE id=?',
+                                                                     (payload.get('ipa_id'),)):
+            raise ValueError('IPA no longer exists')
+        recent = self.db.query(
+            "SELECT id,input_json FROM jobs WHERE kind=? AND retry_of IS NOT NULL AND created_at>=?",
+            (job['kind'], (datetime.now(timezone.utc)-timedelta(hours=24)).isoformat()),
+        )
+        retries = 0
+        for item in recent:
+            try:
+                retries += int(json.loads(item['input_json']) == payload)
+            except (TypeError, ValueError):
+                continue
+        if retries >= 3:
+            raise ValueError('Retry limit reached: max 3 confirmed retries in 24 hours')
+        if job['kind'] == 'renew':
+            active = self.db.query("SELECT input_json FROM jobs WHERE kind='renew' AND state IN ('queued','running')")
+            for item in active:
+                try:
+                    if json.loads(item['input_json']) == payload:
+                        raise ValueError('Renewal already queued or running')
+                except (TypeError, json.JSONDecodeError):
+                    continue
+        return self.submit(job['kind'], payload, retry_of=job_id)
 
     async def _process(self, job_id: str):
         async with self.lock:
@@ -263,11 +312,17 @@ class Manager:
                 self.db.exec('UPDATE jobs SET state=?,output_json=?,updated_at=? WHERE id=?',
                              ('failed', json.dumps({'error': message}), utcnow(), job_id))
                 self.db.event('job_failed', f"{job['kind']}: {message}")
+                if job['kind'] == 'renew':
+                    self.db.exec('UPDATE installations SET retry_failures=retry_failures+1 WHERE id=?',
+                                 (params.get('installation_id'),))
                 await self._notify('sign_failed', 'job-failed:' + job_id)
                 return
             self.db.exec('UPDATE jobs SET state=?,output_json=?,updated_at=? WHERE id=?',
                          ('succeeded', json.dumps(output), utcnow(), job_id))
             self.db.event('job_succeeded', job['kind'])
+            if job['kind'] == 'renew':
+                self.db.exec("UPDATE installations SET retry_failures=0 WHERE id=?",
+                             (params.get('installation_id'),))
             if job['kind'] == 'renew':
                 await self._notify('renewed', 'job-renewed:' + job_id)
 
@@ -413,7 +468,9 @@ class Manager:
             try:
                 expires = datetime.fromisoformat(r['expires_at'])
                 attempted = datetime.fromisoformat(r['last_attempt']) if r['last_attempt'] else None
-                if expires <= cutoff and (not attempted or attempted < now - timedelta(hours=6)):
+                failures = max(0, min(3, int(r.get('retry_failures') or 0)))
+                backoff = min(24, 6 * (2 ** failures))
+                if expires <= cutoff and (not attempted or attempted < now - timedelta(hours=backoff)):
                     result.append(r)
             except (ValueError, TypeError):
                 continue

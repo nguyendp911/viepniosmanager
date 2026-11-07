@@ -24,7 +24,7 @@ foreach ($port in @(8765,8766)) {
     }
 }
 $Manifest = Get-Content -LiteralPath $ManifestPath -Raw -Encoding UTF8 | ConvertFrom-Json
-if ($Manifest.schema -ne 1 -or $Manifest.version -ne '2.1.1') {
+if ($Manifest.schema -ne 1 -or $Manifest.version -ne '2.1.2') {
     throw 'Unsupported or unexpected ViePN package manifest.'
 }
 $Entries = @($Manifest.files.PSObject.Properties)
@@ -36,7 +36,7 @@ foreach ($entry in $Entries) {
         throw "Unsafe package path: $rel"
     }
     $part = $rel.Split('/')[0]
-    if ($part -notin $approved -and $rel -notin @('README.md','Start-ViePN.bat','Install-ViePN.bat')) {
+    if ($part -notin $approved -and $rel -notin @('README.md','Start-ViePN.bat','Install-ViePN.bat','Update-ViePN.bat')) {
         throw "Unapproved package path: $rel"
     }
     $file = Join-Path $Source ($rel.Replace('/', '\'))
@@ -99,7 +99,7 @@ try {
     throw
 }
 Write-Host ''
-Write-Host "ViePN 2.1 source installed at $Destination" -ForegroundColor Green
+Write-Host "ViePN 2.1.2 source installed at $Destination" -ForegroundColor Green
 Write-Host "Previous code backup: $backupPath"
 Write-Host 'Your %%LOCALAPPDATA%% ViePN data, IPA files, sessions and token were not overwritten.'
 Write-Host 'Start ViePN by double-clicking Start-ViePN.bat after setup.'

@@ -56,7 +56,13 @@ jobs:
           $package = Join-Path $env:RUNNER_TEMP 'ViePN-Package'
           $destination = Join-Path $env:RUNNER_TEMP 'ViePN-Installed'
           Expand-Archive -LiteralPath 'dist/ViePN-Windows-Portable.zip' -DestinationPath $package -Force
-          & (Join-Path $package 'windows/install-portable.ps1') -Source $package -Destination $destination
+          # Exercise the actual double-click BAT path, including Windows quoting.
+          $env:VIEPN_TEST_INSTALL_DEST = $destination
+          & cmd.exe /c ('"' + (Join-Path $package 'Install-ViePN.bat') + '" --ci-test')
+          if ($LASTEXITCODE -ne 0) {
+            throw 'Portable BAT installer failed'
+          }
+          Remove-Item Env:\VIEPN_TEST_INSTALL_DEST
           if (-not (Test-Path (Join-Path $destination 'Start-ViePN.bat'))) {
             throw 'Portable install did not deliver Start-ViePN.bat'
           }

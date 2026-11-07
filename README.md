@@ -1,8 +1,31 @@
 # ViePN iOS Manager
 
-Công cụ quản lý **IPA và iPhone/iPad của chính bạn** trên Windows, kèm dashboard web và ứng dụng điều khiển iOS bằng SwiftUI.
+Công cụ quản lý **IPA và iPhone/iPad của chính bạn** trên Windows, kèm dashboard web và ứng dụng điều khiển iOS bằng SwiftUI. Hỗ trợ quy trình Apple ID miễn phí thông qua SideStore.
 
 **Trạng thái:** mã nguồn triển khai được và có kiểm thử backend; **chưa được thử trực tiếp trên iPhone thật trong môi trường này**. GitHub Actions xây dựng bản **IPA chưa ký** để ký bằng chứng chỉ/provisioning profile hợp lệ của bạn.
+
+## Apple ID miễn phí (ký và gia hạn 7 ngày)
+
+**Đã có chế độ riêng trong dashboard: `Apple ID miễn phí`.** Không cần P12 hoặc zsign cho chế độ này.
+
+1. Cài iLoader và SideStore theo [hướng dẫn SideStore chính thức](https://docs.sidestore.io/docs/installation/install). Đăng nhập Apple Account **trực tiếp trong iLoader/SideStore**, không nhập Apple ID hay mật khẩu vào ViePN.
+2. Mở trang `http://127.0.0.1:8765`, đăng nhập bằng access token ViePN, chọn **Apple ID miễn phí**.
+3. Chọn IPA, bấm **Tải IPA về Windows** để chuyển bằng iCloud Drive/Files, hoặc chọn **Tạo liên kết Wi-Fi** để chuyển qua mạng nội bộ.
+4. Trên iPhone, nhập IPA vào SideStore để ký/cài; vào **My Apps → Refresh All** trước khi hết 7 ngày.
+
+**Phân biệt trách nhiệm:** ViePN giúp chuẩn bị/chuyển IPA và quản lý thư viện, **không tự đăng nhập Apple hay tự ký/gia hạn bằng Apple ID**. SideStore là thành phần thực hiện ký và refresh. Gia hạn nền có thể không luôn thành công. Với Apple Account miễn phí thường giới hạn tối đa 3 app đang cài, tính cả SideStore. Xem [hướng dẫn đầy đủ và bảo mật liên kết Wi-Fi](docs/FREE_APPLE_ID.md).
+
+### Chuyển IPA qua Wi-Fi
+
+Chỉ bật API trên mạng LAN riêng đáng tin và giới hạn Windows Firewall **Private**:
+
+```powershell
+cd C:\ViePN-iOS-Manager
+$env:VIEPN_HOST = '0.0.0.0'
+.\windows\start.ps1
+```
+
+Dùng `ipconfig` để xem IPv4 Windows, nhập địa chỉ đó trong tab **Apple ID miễn phí**. Link IPA có hiệu lực 10 phút, tải một lần, không chứa token quản trị; ai có link vẫn tải được IPA trước khi hết hạn. **Không mở cổng 8765 ra Internet.**
 
 ## Chức năng
 

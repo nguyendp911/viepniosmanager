@@ -57,7 +57,7 @@ if errorlevel 1 (
     echo [ViePN] Windows API is already running.
 )
 rem Prevent silently reusing a stale old-version service.
-powershell.exe -NoProfile -Command "try {$r=Invoke-RestMethod 'http://127.0.0.1:8765/api/health' -TimeoutSec 2; if ($r.ok -and ([version]$r.version -ge [version]'2.1.2')) {exit 0}}catch{}; exit 1" >nul 2>&1
+powershell.exe -NoProfile -Command "try {$r=Invoke-RestMethod 'http://127.0.0.1:8765/api/health' -TimeoutSec 2; if ($r.ok -and ([version]$r.version -ge [version]'2.1.3')) {exit 0}}catch{}; exit 1" >nul 2>&1
 if errorlevel 1 (
     echo [ERROR] Another ViePN version is running on 8765.
     echo Close its old PowerShell window, then double-click this BAT again.

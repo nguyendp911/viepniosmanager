@@ -72,6 +72,11 @@ class AppleAccountLogout(BaseModel):
     email: str | None = None
 
 
+class NotificationChoice(BaseModel):
+    enabled: bool
+    consent: bool = False
+
+
 class RenewPayload(BaseModel):
     installation_id: str
 
@@ -88,7 +93,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         yield
         await manager.stop()
 
-    app = FastAPI(title='ViePN iOS Manager', version='1.3.0', lifespan=lifespan,
+    app = FastAPI(title='ViePN iOS Manager', version='1.4.0', lifespan=lifespan,
                   docs_url=None, redoc_url=None, openapi_url=None)
     app.state.manager = manager
 
@@ -128,7 +133,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
 
     @app.get('/api/health')
     def health():
-        return {'ok': True, 'service': 'ViePN iOS Manager', 'version': '1.3.0'}
+        return {'ok': True, 'service': 'ViePN iOS Manager', 'version': '1.4.0'}
 
     @app.get('/api/overview', dependencies=[Depends(auth)])
     def overview():
@@ -305,6 +310,32 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     @app.post('/api/apple/auth/cancel', dependencies=[Depends(auth), Depends(local_apple_control)])
     async def apple_cancel():
         return await asyncio.to_thread(apple_auth.cancel)
+
+    @app.get('/api/notifications/config', dependencies=[Depends(auth), Depends(local_apple_control)])
+    def notifications_config():
+        # Includes the ntfy topic secret. NEVER expose this route via remote gateway.
+        return manager.notifications.settings()
+
+    @app.post('/api/notifications/config', dependencies=[Depends(auth), Depends(local_apple_control)])
+    async def notifications_configure(payload: NotificationChoice):
+        try:
+            result = await asyncio.to_thread(
+                manager.notifications.configure, payload.enabled, payload.consent
+            )
+        except ValueError as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from None
+        if payload.enabled:
+            await manager.expiry_alert_scan()
+        return result
+
+    @app.post('/api/notifications/test', dependencies=[Depends(auth), Depends(local_apple_control)])
+    async def notifications_test():
+        if not manager.notifications.settings()['enabled']:
+            raise HTTPException(409, detail='Bật thông báo và xác nhận đồng ý trước khi thử.')
+        sent = await asyncio.to_thread(manager.notifications.publish, 'test')
+        if not sent:
+            raise HTTPException(502, detail='Chưa gửi được thông báo đến ntfy.sh. Kiểm tra Internet của Windows.')
+        return {'sent': True}
 
     @app.post('/api/apple/sign', dependencies=[Depends(auth)])
     async def apple_sign(payload: AppleSignPayload):

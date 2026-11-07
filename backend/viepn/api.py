@@ -79,6 +79,10 @@ class NotificationChoice(BaseModel):
     consent: bool = False
 
 
+class ChannelIPARequest(BaseModel):
+    channel: str
+
+
 class RenameIPARequest(BaseModel):
     alias: str = Field(default='', max_length=80)
 
@@ -106,7 +110,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         yield
         await manager.stop()
 
-    app = FastAPI(title='ViePN iOS Manager', version='1.6.0', lifespan=lifespan,
+    app = FastAPI(title='ViePN iOS Manager', version='1.7.0', lifespan=lifespan,
                   docs_url=None, redoc_url=None, openapi_url=None)
     app.state.manager = manager
 
@@ -146,7 +150,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
 
     @app.get('/api/health')
     def health():
-        return {'ok': True, 'service': 'ViePN iOS Manager', 'version': '1.6.0'}
+        return {'ok': True, 'service': 'ViePN iOS Manager', 'version': '1.7.0'}
 
     @app.get('/api/overview', dependencies=[Depends(auth)])
     def overview():
@@ -217,6 +221,17 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             raise HTTPException(400, detail=str(e))
         finally:
             target.unlink(missing_ok=True)
+
+    @app.patch('/api/ipas/{ipa_id}/channel', dependencies=[Depends(auth)])
+    async def channel_library_ipa(ipa_id: str, payload: ChannelIPARequest):
+        async with manager.lock:
+            try:
+                result = manager.classify_ipa(ipa_id, payload.channel)
+            except ValueError as exc:
+                raise HTTPException(400, detail=str(exc)) from exc
+        if result is None:
+            raise HTTPException(404, detail='IPA not found')
+        return result
 
     @app.patch('/api/ipas/{ipa_id}/label', dependencies=[Depends(auth)])
     async def rename_library_ipa(ipa_id: str, payload: RenameIPARequest):

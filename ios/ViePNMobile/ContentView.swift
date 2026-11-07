@@ -308,12 +308,37 @@ private struct LibraryView: View {
                         Text(ipa.buildDisplayName).tag(ipa.id)
                     }
                 }.tint(.white)
+                HStack {
+                    Text("Thiết bị nhận diện bởi Windows").font(.subheadline.bold())
+                    Spacer()
+                    Button {
+                        Task { await model.refreshDevices() }
+                    } label: {
+                        Label("Quét lại", systemImage: "arrow.clockwise")
+                    }.buttonStyle(.bordered)
+                        .disabled(model.devicesLoading || !model.isConfigured)
+                }
+                if model.devicesLoading {
+                    ProgressView("Đang tải thiết bị từ Windows...")
+                }
+                if let problem = model.devicesError {
+                    Label(problem, systemImage: "exclamationmark.triangle")
+                        .font(.footnote).foregroundStyle(.orange)
+                } else if model.devices.isEmpty && !model.devicesLoading {
+                    Text("Windows chưa nhận diện iPhone nào. Cắm USB, mở khóa và chọn Tin cậy máy tính; hoặc dùng ghép đôi Wi-Fi đã thiết lập trên Windows.")
+                        .font(.footnote).foregroundStyle(Palette.secondary)
+                }
                 Picker("iPhone", selection: $selectedDevice) {
                     Text("Chọn thiết bị").tag("")
                     ForEach(model.devices) { device in
                         Text("\(device.name) · \(device.id.prefix(7))").tag(device.id)
                     }
                 }.tint(.white)
+                    .disabled(model.devices.isEmpty || model.devicesLoading)
+                if !selectedDevice.isEmpty && !model.devices.contains(where: { $0.id == selectedDevice }) {
+                    Text("Thiết bị đã chọn không còn kết nối với Windows. Hãy quét lại.")
+                        .font(.footnote).foregroundStyle(.orange)
+                }
                 Toggle("Ký lại bằng P12/profile", isOn: $resign).tint(Palette.mint)
                 Toggle("Tự động thử gia hạn", isOn: $autoRenew).tint(Palette.mint)
                 Button {
@@ -347,6 +372,16 @@ private struct LibraryView: View {
             Button("Hủy", role: .cancel) {}
         } message: {
             Text("Nếu một bản IPA đang được theo dõi gia hạn, lịch theo dõi sẽ bị xóa. Không gỡ ứng dụng khỏi iPhone, không thu hồi profile Apple. Không thể hoàn tác.")
+        }
+        .task {
+            if model.devices.isEmpty && model.isConfigured {
+                await model.refreshDevices()
+            }
+        }
+        .onChange(of: model.devices.map(\.id)) { _, ids in
+            if !selectedDevice.isEmpty && !ids.contains(selectedDevice) {
+                selectedDevice = ""
+            }
         }
         .fileImporter(isPresented: $selectingIPA, allowedContentTypes: [ipaType], allowsMultipleSelection: false) { result in
             if case .success(let urls) = result, let first = urls.first { Task { await model.uploadIPA(first) } }

@@ -12,7 +12,7 @@ from contextlib import asynccontextmanager
 
 import httpx
 from fastapi import FastAPI, Header, HTTPException, Request
-from fastapi.responses import JSONResponse, StreamingResponse
+from fastapi.responses import JSONResponse, Response, StreamingResponse
 from starlette.background import BackgroundTask
 
 from .config import Settings, load_settings
@@ -114,6 +114,13 @@ def create_remote_app(settings: Settings | None = None,
         filtered["Cache-Control"] = "no-store"
         filtered["Referrer-Policy"] = "no-referrer"
         filtered["X-Frame-Options"] = "DENY"
+        # In-memory transports may return a buffered, already-consumed response.
+        # Real network responses remain streamed to avoid buffering large IPAs.
+        if response.is_stream_consumed:
+            buffered = response.content
+            await response.aclose()
+            return Response(content=buffered, status_code=response.status_code,
+                            headers=filtered)
         return StreamingResponse(
             response.aiter_raw(),
             status_code=response.status_code,

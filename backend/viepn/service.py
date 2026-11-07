@@ -1,6 +1,7 @@
 from __future__ import annotations
 import asyncio
 import json
+import hashlib
 import os
 import shutil
 import uuid
@@ -13,12 +14,14 @@ from .db import Database, utcnow
 from .ipa import inspect_ipa, parse_provision, profile_compatible, sha256_file
 from .tools import connected_devices, install_signed_ipa, sign_with_zsign
 from .native_sign import sign_free_ipa
+from .notifications import NotificationService
 
 
 class Manager:
     def __init__(self, config: Settings):
         self.cfg = config
         self.db = Database(config.root / 'viepn.sqlite3')
+        self.notifications = NotificationService(config.root, self.db)
         self.lock = asyncio.Lock()
         self.background_task: asyncio.Task | None = None
         (config.root / 'ipas').mkdir(exist_ok=True)
@@ -197,10 +200,13 @@ class Manager:
                 self.db.exec('UPDATE jobs SET state=?,output_json=?,updated_at=? WHERE id=?',
                              ('failed', json.dumps({'error': message}), utcnow(), job_id))
                 self.db.event('job_failed', f"{job['kind']}: {message}")
+                await self._notify('sign_failed', 'job-failed:' + job_id)
                 return
             self.db.exec('UPDATE jobs SET state=?,output_json=?,updated_at=? WHERE id=?',
                          ('succeeded', json.dumps(output), utcnow(), job_id))
             self.db.event('job_succeeded', job['kind'])
+            if job['kind'] == 'renew':
+                await self._notify('renewed', 'job-renewed:' + job_id)
 
     async def _apple_sign(self, params: dict) -> dict:
         """Obtain a fresh Apple Personal Team profile and sign without other apps."""
@@ -360,11 +366,49 @@ class Manager:
                 self.db.exec('UPDATE installations SET last_attempt=? WHERE id=?', (utcnow(), row['id']))
         return queued
 
+    async def _notify(self, kind: str, key: str | None = None) -> None:
+        # The notification transport must never interrupt a signing job.
+        try:
+            await asyncio.to_thread(self.notifications.publish, kind, key)
+        except Exception:
+            pass
+
+    async def expiry_alert_scan(self) -> int:
+        """Warn once per installation expiry when less than 48h remains."""
+        now = datetime.now(timezone.utc)
+        cutoff = now + timedelta(hours=48)
+        count = 0
+        for row in self.db.query(
+            "SELECT id,expires_at FROM installations WHERE expires_at IS NOT NULL"
+        ):
+            try:
+                expiry = datetime.fromisoformat(row['expires_at'])
+                if expiry.tzinfo is None:
+                    expiry = expiry.replace(tzinfo=timezone.utc)
+                if expiry > cutoff:
+                    continue
+                # Do not include bundle ID or UDID in the remote push content.
+                marker = hashlib.sha256(
+                    (row['id'] + "|" + row['expires_at']).encode("utf-8")
+                ).hexdigest()
+                try:
+                    delivered = await asyncio.to_thread(
+                        self.notifications.publish, "expiry_soon", "expiry:" + marker
+                    )
+                    count += int(delivered)
+                except Exception:
+                    continue
+            except (ValueError, TypeError):
+                continue
+        return count
+
     async def scheduler(self):
         try:
+            await self.expiry_alert_scan()
             await self.auto_renew_scan()
             while True:
                 await asyncio.sleep(max(60, self.cfg.scan_minutes * 60))
+                await self.expiry_alert_scan()
                 await self.auto_renew_scan()
         except asyncio.CancelledError:
             raise

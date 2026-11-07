@@ -78,7 +78,7 @@ def create_remote_app(settings: Settings | None = None,
 
         # A public health probe exposes no private data. Other calls require
         # the same secret as the primary dashboard, even within the tailnet.
-        if url_path != "/api/health":
+        if url_path not in ("/", "/api/health"):
             expected = f"Bearer {cfg.token}"
             if not authorization or not hmac.compare_digest(authorization, expected):
                 raise HTTPException(401, detail="Authentication required")

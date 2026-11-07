@@ -55,6 +55,12 @@ Không lưu mật khẩu Apple trong web hoặc GitHub; phiên đăng nhập đ�
 
 Theo Apple, Personal Team thường giới hạn 3 ứng dụng cài trên mỗi thiết bị, 10 App IDs/7 ngày, 3 thiết bị/7 ngày và provisioning profiles hết hạn 7 ngày. Phải tạo profile mới, ký lại và cài đè; không thể gia hạn chỉ bằng đổi ngày trong IPA. IPA mã hóa FairPlay không thể ký lại. Firmware IPSW đã ngừng ký không được hỗ trợ.
 
+## Biểu tượng ViePN trên iPhone
+
+ViePN iOS dùng AppIcon mang logo chiếc khiên neon do chủ dự án cung cấp. Bộ asset được cấu hình trong `ios/ViePNMobile/Assets.xcassets/AppIcon.appiconset` với `ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon`. GitHub Actions tạo PNG 1024×1024 từ bản ảnh nguồn tối ưu dung lượng trước khi build IPA.
+
+Để nâng lên ảnh gốc sắc nét nhất, chép file PNG 1024×1024 tên `AppIcon-1024.png` vào thư mục asset trên và commit. CI sẽ ưu tiên file PNG này, không ghi đè. Xem [hướng dẫn icon](ios/APPICON.md).
+
 ## Cấu trúc
 
 - `backend/viepn/native_sign.py` — đăng nhập terminal, cấp profile, ký IPA.

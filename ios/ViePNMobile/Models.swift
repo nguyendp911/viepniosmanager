@@ -12,6 +12,7 @@ struct IPAInfo: Codable, Identifiable {
     let createdAt: String?
     let sizeBytes: Int?
     let profileTeam: String?
+    let channel: String?
 
     var buildDisplayName: String {
         let base = (alias?.isEmpty == false) ? alias! : name

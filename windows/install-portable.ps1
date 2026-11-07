@@ -6,6 +6,17 @@ param(
     [string]$Destination = 'C:\ViePN-iOS-Manager'
 )
 $ErrorActionPreference = 'Stop'
+function Get-ViePNSHA256([string]$FilePath) {
+    # Works on Windows PowerShell 5.1 and PowerShell 7 without Utility cmdlets.
+    $stream = [System.IO.File]::OpenRead($FilePath)
+    $sha = [System.Security.Cryptography.SHA256]::Create()
+    try {
+        return [System.BitConverter]::ToString($sha.ComputeHash($stream)).Replace('-', '').ToLowerInvariant()
+    } finally {
+        $sha.Dispose()
+        $stream.Dispose()
+    }
+}
 $Source = (Resolve-Path -LiteralPath $Source).Path
 $ManifestPath = Join-Path $Source 'manifest.json'
 if (-not (Test-Path -LiteralPath $ManifestPath -PathType Leaf)) {
@@ -41,7 +52,7 @@ foreach ($entry in $Entries) {
     }
     $file = Join-Path $Source ($rel.Replace('/', '\'))
     if (-not (Test-Path -LiteralPath $file -PathType Leaf)) { throw "Missing file: $rel" }
-    $actual = (Get-FileHash -LiteralPath $file -Algorithm SHA256).Hash.ToLowerInvariant()
+    $actual = (Get-ViePNSHA256 $file)
     if ($actual -ne ([string]$entry.Value).ToLowerInvariant()) {
         throw "Checksum mismatch: $rel"
     }
@@ -80,7 +91,7 @@ try {
         }
         Copy-Item -LiteralPath $src -Destination $target -Force
         $installed += $target
-        $actual = (Get-FileHash -LiteralPath $target -Algorithm SHA256).Hash.ToLowerInvariant()
+        $actual = (Get-ViePNSHA256 $target)
         if ($actual -ne ([string]$entry.Value).ToLowerInvariant()) {
             throw "Installed file checksum mismatch: $rel"
         }

@@ -118,6 +118,7 @@ class Manager:
             'id': ipa_id,
             'file_removed': results['files_removed'] == 1,
             'tracking_removed': results['tracking_removed'],
+            'pending_file_deletes': results['pending_file_deletes'],
         }
 
     def delete_ipas(self, ids: list[str], force: bool = False) -> dict:

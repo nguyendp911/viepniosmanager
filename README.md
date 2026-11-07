@@ -34,6 +34,22 @@ Sau khi cài đặt một lần bằng `windows\setup.ps1`, bạn chỉ cần **
 
 Trong tab **Thư viện IPA**, nhấn **🗑 Xóa** bên cạnh IPA cần xóa và xác nhận. Thao tác xóa bản IPA trong thư viện Windows (SQLite + file lưu trên đĩa), **không gỡ ứng dụng khỏi iPhone**. ViePN sẽ từ chối xóa file đang được một ứng dụng theo dõi/gia hạn sử dụng hoặc đang có tác vụ ký/cài chưa hoàn thành; dữ liệu cần thiết cho việc gia hạn được giữ an toàn.
 
+## Điều khiển ViePN từ iPhone qua Internet (Private Remote)
+
+ViePN có gateway riêng tại `127.0.0.1:8766` chỉ cho phép các API điều khiển đã được kiểm tra. Tailscale Serve tạo URL HTTPS nội bộ tailnet, **không mở cổng 8765/8766 công khai** và không cần mở port trên router.
+
+1. Cài [Tailscale cho Windows](https://tailscale.com/download/windows) và [Tailscale cho iPhone](https://tailscale.com/download/ios), đăng nhập cùng tailnet.
+2. Cập nhật ViePN, chạy `windows\setup.ps1` để cài `httpx` và thư viện mới.
+3. Nhấp đúp **`Start-ViePN-Remote.bat`**. Script bảo đảm API Windows chỉ nghe localhost, khởi động gateway rồi bật Tailscale Serve HTTPS. Có thể cần bật MagicDNS và HTTPS certificates trong Tailscale admin.
+4. Sao chép URL dạng `https://may-tinh.tailnet.ts.net`. Trong ứng dụng iOS → **Kết nối** → nhập URL này và access token ViePN từ Windows.
+5. Điều khiển trạng thái, quản lý IPA, tạo tác vụ ký/cài và gia hạn khi iPhone có Internet và Tailscale VPN đang bật.
+
+**Giới hạn:** Các thao tác đăng nhập/đăng xuất Apple ID, mật khẩu và 2FA **không được cung cấp qua gateway từ xa**; chỉ thao tác trên máy Windows local. Lệnh ký/cài từ xa cần iPhone được Windows nhận diện bằng USB hoặc pairing Wi-Fi; VPN không thay thế kết nối thiết bị để cài IPA. Máy Windows, gateway và Tailscale phải chạy thì điều khiển từ xa mới hoạt động.
+
+Tắt kết nối từ xa: `powershell -ExecutionPolicy Bypass -File .\windows\stop-remote.ps1`.
+
+Xem **[hướng dẫn chi tiết và xử lý lỗi](docs/REMOTE_ACCESS.md)**. Không dùng Tailscale Funnel (chế độ công khai Internet).
+
 ## Tự gia hạn
 
 - ViePN quét ứng dụng đang bật Auto Renew mỗi 30 phút, ký lại và cài đè khi còn 48 giờ.
@@ -70,6 +86,9 @@ ViePN iOS dùng AppIcon mang logo chiếc khiên neon do chủ dự án cung c�
 - `backend/viepn/applekit/` — Apple auth/GSA + developer services, MIT attribution.
 - `backend/viepn/service.py` — quản lý signing jobs, cài đặt và scheduler.
 - `backend/viepn/api.py` — dashboard APIs; các endpoint tài khoản nhạy cảm chỉ cho localhost có access token và cùng Origin.
+- `backend/viepn/remote_gateway.py` — gateway chỉ cho phép API đã xác định, có token, chặn truy cập Apple ID/2FA từ xa.
+- `backend/remote_run.py` — chạy gateway trên 127.0.0.1:8766.
+- `Start-ViePN-Remote.bat` — thiết lập kết nối HTTPS riêng qua Tailscale Serve.
 - `web/index.html` — dashboard và tab Apple ID miễn phí.
 - `windows/apple-login.ps1` — đăng nhập Apple ID/2FA tại máy tính.
 - `windows/register-auto-renew.ps1` — tạo Windows Scheduled Task.

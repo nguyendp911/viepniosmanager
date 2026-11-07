@@ -66,3 +66,16 @@ def test_remote_can_forward_signed_job_requests(tmp_path):
         assert response.json()["job_id"] == "dummy-test-job"
         assert client.post("/api/apple/auth/verify", headers=BEARER,
                            json={"code": "123456"}).status_code == 404
+
+def test_new_remote_allowlist_blocks_backup_and_apple_credentials():
+    from viepn.remote_gateway import allowed
+    assert allowed("GET", "/api/doctor")
+    assert allowed("PATCH", "/api/ipas/abcdef123456/channel")
+    assert allowed("POST", "/api/jobs/0123456789abcdef/retry")
+    for method, path in [
+        ("POST", "/api/backups"), ("GET", "/api/backups"),
+        ("GET", "/api/backups/ViePN-test.zip"),
+        ("POST", "/api/apple/auth/login"),
+        ("POST", "/api/notifications/config"),
+    ]:
+        assert not allowed(method, path)

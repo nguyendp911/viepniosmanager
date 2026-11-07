@@ -2,7 +2,7 @@
 
 Icon source: uploaded ViePN shield illustration from the project owner.
 
-- `ViePNMobile/Assets.xcassets/AppIcon.appiconset/Source-Icon.jpg` is a compact, reduced-resolution copy for GitHub CI. It is a *fallback* for builds.
+- `resources/AppIcon-source.jpg` is a compact, reduced-resolution copy for GitHub CI. It is a *fallback* for builds.
 - `ViePNMobile/Assets.xcassets/AppIcon.appiconset/AppIcon-1024.png` is the preferred full-quality file (1024x1024 RGB PNG).
 - To replace the fallback with the exact high-resolution icon, download the AppIcon ZIP from the ChatGPT session and copy `ViePNMobile/Assets.xcassets/` to `ios/ViePNMobile/Assets.xcassets/`. Commit the PNG to the repository.
 

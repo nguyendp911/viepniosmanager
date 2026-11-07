@@ -3,7 +3,7 @@
 set -eu
 APPICON_DIR="$(CDPATH= cd -- "$(dirname -- "$0")/../ViePNMobile/Assets.xcassets/AppIcon.appiconset" && pwd)"
 PNG="$APPICON_DIR/AppIcon-1024.png"
-JPEG="$APPICON_DIR/Source-Icon.jpg"
+JPEG="$APPICON_DIR/../../../resources/AppIcon-source.jpg"
 if [ -s "$PNG" ]; then
   echo "Using existing full-quality AppIcon-1024.png"
   exit 0

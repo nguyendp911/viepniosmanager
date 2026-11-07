@@ -1,0 +1,17 @@
+.venv/
+__pycache__/
+.pytest_cache/
+*.pyc
+*.p12
+*.pfx
+*.mobileprovision
+*.ipa
+*.db
+*.sqlite3
+access_token.txt
+.env
+*.log
+ios/build/
+ios/artifacts/
+ios/ViePNMobile.xcodeproj/
+.DS_Store

@@ -1,0 +1,28 @@
+name: ViePNMobile
+options:
+  bundleIdPrefix: com.viepn
+  deploymentTarget:
+    iOS: "16.0"
+settings:
+  base:
+    SWIFT_VERSION: "5.0"
+    TARGETED_DEVICE_FAMILY: "1,2"
+    DEVELOPMENT_TEAM: ""
+    CODE_SIGN_STYLE: Automatic
+    ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS: NO
+targets:
+  ViePNMobile:
+    type: application
+    platform: iOS
+    sources:
+      - ViePNMobile
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.viepn.iosmanager
+        INFOPLIST_FILE: ViePNMobile/Info.plist
+        GENERATE_INFOPLIST_FILE: NO
+schemes:
+  ViePNMobile:
+    build:
+      targets:
+        ViePNMobile: all

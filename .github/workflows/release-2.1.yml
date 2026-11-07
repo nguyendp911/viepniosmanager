@@ -1,0 +1,156 @@
+name: ViePN 2.1.0 Official Release
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/release-2.1.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: viepn-release-2.1
+  cancel-in-progress: false
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install and test backend
+        run: |
+          python -m pip install -r backend/requirements-dev.txt
+          cd backend && python -m pytest -q
+      - name: Verify web dashboard script syntax
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          html=Path("web/index.html").read_text(encoding="utf-8")
+          Path("/tmp/viepn-ui.js").write_text(html.split("<script>",1)[1].split("</script>",1)[0])
+          PY
+          node --check /tmp/viepn-ui.js
+
+  windows-package:
+    needs: validate
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Validate PowerShell and BAT
+        shell: pwsh
+        run: |
+          Get-ChildItem windows -Filter '*.ps1' | ForEach-Object {
+            $tokens = $null; $errors = $null
+            [System.Management.Automation.Language.Parser]::ParseFile($_.FullName, [ref]$tokens, [ref]$errors) | Out-Null
+            if ($errors.Count) { throw "PowerShell parse failed: $($_.Name)" }
+          }
+          cmd /c "Start-ViePN.bat --self-test"
+          if ($LASTEXITCODE -ne 0) { throw 'BAT self-test failed' }
+      - name: Build Windows portable release
+        shell: pwsh
+        run: |
+          python windows/build_portable.py
+          Rename-Item 'dist/ViePN-Windows-Portable.zip' 'ViePN-Windows-Portable-2.1.0.zip'
+          $p = 'dist/ViePN-Windows-Portable-2.1.0.zip'
+          $sha = (Get-FileHash $p -Algorithm SHA256).Hash.ToLowerInvariant()
+          Set-Content 'dist/ViePN-Windows-Portable-2.1.0.sha256' -Value "$sha  ViePN-Windows-Portable-2.1.0.zip" -Encoding ascii
+      - name: Smoke test extracted installer in separate temp directory
+        shell: pwsh
+        run: |
+          $tempPackage = Join-Path $env:RUNNER_TEMP 'ViePN-Official-Extract'
+          $tempTarget = Join-Path $env:RUNNER_TEMP 'ViePN-Official-Target'
+          Expand-Archive 'dist/ViePN-Windows-Portable-2.1.0.zip' $tempPackage
+          & (Join-Path $tempPackage 'windows/install-portable.ps1') -Source $tempPackage -Destination $tempTarget
+          if (-not (Test-Path (Join-Path $tempTarget 'Start-ViePN.bat'))) { throw 'Install failed' }
+          if (-not (Test-Path (Join-Path $tempTarget 'backend/viepn/api.py'))) { throw 'Backend missing' }
+          if ($LASTEXITCODE -and $LASTEXITCODE -ne 0) { throw 'Installation returned error' }
+      - uses: actions/upload-artifact@v4
+        with:
+          name: windows-official-2.1
+          path: |
+            dist/ViePN-Windows-Portable-2.1.0.zip
+            dist/ViePN-Windows-Portable-2.1.0.sha256
+          if-no-files-found: error
+
+  ios-package:
+    needs: validate
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install XcodeGen
+        run: brew install xcodegen
+      - name: Prepare ViePN icon
+        run: sh ios/scripts/prepare-app-icon.sh
+      - name: Generate Xcode project
+        run: cd ios && xcodegen generate
+      - name: Build iPhone release binary (UNSIGNED)
+        run: |
+          xcodebuild -project ios/ViePNMobile.xcodeproj -scheme ViePNMobile -configuration Release -sdk iphoneos -derivedDataPath ios/build CODE_SIGNING_ALLOWED=NO build
+          mkdir -p ios/artifacts/Payload
+          cp -R ios/build/Build/Products/Release-iphoneos/ViePNMobile.app ios/artifacts/Payload/
+          cd ios/artifacts
+          zip -qr ViePNMobile-2.1.0-UNSIGNED.ipa Payload
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ios-official-2.1
+          path: ios/artifacts/ViePNMobile-2.1.0-UNSIGNED.ipa
+          if-no-files-found: error
+
+  publish:
+    needs: [validate, windows-package, ios-package]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: '*-official-2.1'
+          path: release-assets
+          merge-multiple: true
+      - name: Verify asset inventory and checksums
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd release-assets
+          test -s ViePN-Windows-Portable-2.1.0.zip
+          test -s ViePN-Windows-Portable-2.1.0.sha256
+          test -s ViePNMobile-2.1.0-UNSIGNED.ipa
+          sha256sum --check ViePN-Windows-Portable-2.1.0.sha256
+          python - <<'PY'
+          import zipfile, json, hashlib
+          with zipfile.ZipFile("ViePN-Windows-Portable-2.1.0.zip") as z:
+              manifest=json.loads(z.read("manifest.json"))
+              assert manifest["version"]=="2.1.0"
+              for path, digest in manifest["files"].items():
+                  assert hashlib.sha256(z.read(path)).hexdigest()==digest
+                  assert not any(x in path.lower() for x in ("access_token", "session/", ".env", ".p12", ".venv/"))
+          with zipfile.ZipFile("ViePNMobile-2.1.0-UNSIGNED.ipa") as z:
+              assert any(name.endswith("/Info.plist") and name.startswith("Payload/") for name in z.namelist())
+          PY
+      - name: Publish version tag and stable GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          if gh release view v2.1.0 >/dev/null 2>&1; then
+            echo "v2.1.0 already exists: refusing to overwrite an immutable stable release."
+            exit 1
+          fi
+          gh release create v2.1.0 \
+            "release-assets/ViePN-Windows-Portable-2.1.0.zip" \
+            "release-assets/ViePN-Windows-Portable-2.1.0.sha256" \
+            "release-assets/ViePNMobile-2.1.0-UNSIGNED.ipa" \
+            --target "$GITHUB_SHA" \
+            --title "ViePN iOS Manager 2.1.0 (Stable)" \
+            --notes-file docs/RELEASE_2_1_0.md \
+            --latest

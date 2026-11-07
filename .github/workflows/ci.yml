@@ -55,6 +55,36 @@ jobs:
             }
           }
           Write-Host "All $($files.Count) PowerShell scripts parsed successfully."
+  windows-portable:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build checksum-verified portable distribution
+        run: python windows/build_portable.py
+      - name: Audit ZIP file manifest and privacy
+        run: |
+          python - <<'PY'
+          import hashlib, json, zipfile
+          from pathlib import Path
+          p=Path("dist/ViePN-Windows-Portable.zip")
+          digest=hashlib.sha256(p.read_bytes()).hexdigest()
+          assert digest in Path("dist/ViePN-Windows-Portable.sha256").read_text()
+          with zipfile.ZipFile(p) as z:
+              m=json.loads(z.read("manifest.json"))
+              assert m["version"]=="2.1.0"
+              assert len(m["files"])>=15
+              for name, sha in m["files"].items():
+                  assert hashlib.sha256(z.read(name)).hexdigest()==sha
+                  assert not any(w in name.lower() for w in (".env","access_token","session/","incoming/",".venv/",".git/"))
+              assert "backend/viepn/applekit/certs/apple_gsa_ca.pem" in m["files"]
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ViePN-Windows-Portable-2.1
+          path: |
+            dist/ViePN-Windows-Portable.zip
+            dist/ViePN-Windows-Portable.sha256
+          if-no-files-found: error
   ios-build:
     runs-on: macos-latest
     steps:

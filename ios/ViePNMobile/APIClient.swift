@@ -76,6 +76,13 @@ struct APIClient {
         return try decode(data, response, as: T.self)
     }
 
+    func patch<T: Decodable, P: Encodable>(_ path: String, body: P, as: T.Type) async throws -> T {
+        var r = try request(path, method: "PATCH", contentType: "application/json")
+        r.httpBody = try JSONEncoder().encode(body)
+        let (data, response) = try await URLSession.shared.data(for: r)
+        return try decode(data, response, as: T.self)
+    }
+
     func upload(_ path: String, fileURL: URL, as filename: String) async throws {
         guard fileURL.startAccessingSecurityScopedResource() else {
             throw APIError(message: "Không có quyền đọc file trong Files")

@@ -48,6 +48,7 @@ struct ContentView: View {
 }
 
 private struct Page<Content: View>: View {
+    @EnvironmentObject var model: ManagerModel
     let title: String
     @ViewBuilder let content: Content
     var body: some View {
@@ -59,6 +60,7 @@ private struct Page<Content: View>: View {
                 .padding(16)
             }
             .background(Palette.bg)
+            .refreshable { await model.load() }
             .navigationTitle(title)
             .toolbarBackground(Palette.bg, for: .navigationBar)
         }
@@ -99,6 +101,8 @@ private struct KPI: View {
 
 private struct DashboardView: View {
     @EnvironmentObject var model: ManagerModel
+    @State private var retryID: String? = nil
+    @State private var confirmingRetry = false
     var body: some View {
         Page(title: "ViePN iOS Manager") {
             HStack(spacing: 12) {
@@ -141,10 +145,46 @@ private struct DashboardView: View {
                 Label("Trình ký: \((model.overview?.tools.zsign ?? false) ? "Sẵn sàng" : "Chưa cấu hình")", systemImage: "signature")
                 Label("Cầu nối thiết bị: \((model.overview?.tools.pymobiledevice3 ?? false) ? "Sẵn sàng" : "Chưa cài")", systemImage: "cable.connector")
             }
+            Panel {
+                Text("Hàng đợi và lịch sử").font(.headline)
+                if let jobs = model.overview?.jobs, !jobs.isEmpty {
+                    ForEach(Array(jobs.prefix(8))) { job in
+                        HStack {
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text(job.kind).font(.subheadline.bold())
+                                Text(job.state + " · " + String(job.createdAt.prefix(16)))
+                                    .font(.caption).foregroundStyle(Palette.secondary)
+                            }
+                            Spacer()
+                            if job.state == "failed" && ["sign", "apple_sign", "renew"].contains(job.kind) {
+                                Button("Thử lại") {
+                                    retryID = job.id
+                                    confirmingRetry = true
+                                }.buttonStyle(.bordered)
+                            } else {
+                                Image(systemName: job.state == "succeeded" ? "checkmark.circle.fill" :
+                                    job.state == "failed" ? "xmark.circle" : "clock")
+                                  .foregroundStyle(job.state == "succeeded" ? Palette.mint : Palette.secondary)
+                            }
+                        }
+                        Divider().overlay(.white.opacity(0.08))
+                    }
+                } else {
+                    Text("Chưa có tác vụ.").foregroundStyle(Palette.secondary)
+                }
+            }
             Button { Task { await model.load() } } label: {
                 Label("Làm mới dữ liệu", systemImage: "arrow.clockwise")
                     .frame(maxWidth: .infinity)
             }.buttonStyle(.borderedProminent).disabled(!model.isConfigured || model.busy)
+        }
+        .confirmationDialog("Gửi lại tác vụ?", isPresented: $confirmingRetry, titleVisibility: .visible) {
+            Button("Xác nhận thử lại") {
+                if let id = retryID { Task { await model.retryJob(id) } }
+            }
+            Button("Hủy", role: .cancel) {}
+        } message: {
+            Text("Chỉ thử lại ký/gia hạn có giới hạn. Không tự cài lại IPA lên thiết bị.")
         }
     }
 }
@@ -441,6 +481,29 @@ private struct ConnectionView: View {
                 }
                 Text("Chỉ có cảnh báo khi Windows bật, ViePN đang chạy và người dùng đã bật gửi qua ntfy.sh. Dịch vụ ntfy là bên thứ ba.")
                     .font(.caption).foregroundStyle(.orange)
+            }
+            Panel {
+                Label("Connection Doctor", systemImage: "stethoscope")
+                    .font(.headline).foregroundStyle(Palette.mint)
+                Button { Task { await model.checkConnection() } } label: {
+                    Label("Kiểm tra máy chủ Windows", systemImage: "checkmark.shield")
+                        .frame(maxWidth: .infinity)
+                }.buttonStyle(.borderedProminent)
+                if let report = model.diagnostic {
+                    Text("\(report.okCount)/\(report.total) bước sẵn sàng")
+                        .font(.subheadline.bold())
+                    ForEach(report.checks) { check in
+                        HStack(alignment: .top) {
+                            Image(systemName: check.ok ? "checkmark.circle.fill" : "exclamationmark.circle")
+                                .foregroundStyle(check.ok ? Palette.mint : .orange)
+                            VStack(alignment: .leading) {
+                                Text(check.key.capitalized)
+                                Text(check.tip).font(.caption).foregroundStyle(Palette.secondary)
+                            }
+                        }
+                    }
+                    Text(report.note).font(.caption2).foregroundStyle(Palette.secondary)
+                }
             }
             Panel {
                 Text("Thiết bị nhận diện trên Windows").font(.headline)

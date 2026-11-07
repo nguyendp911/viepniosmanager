@@ -27,6 +27,8 @@ struct InstallationInfo: Codable, Identifiable {
     let autoRenew: Int
     let state: String
     let lastError: String?
+    let sourceIpaId: String?
+    let currentIpaId: String?
 }
 
 struct ProfileInfo: Codable, Identifiable {

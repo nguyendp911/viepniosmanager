@@ -102,18 +102,51 @@ struct APIClient {
     }
 
     func devices() async throws -> [DeviceInfo] {
-        let r = try request("/devices")
-        let (data, response) = try await URLSession.shared.data(for: r)
-        guard let http = response as? HTTPURLResponse, (200...299).contains(http.statusCode) else {
-            throw APIError(message: "Không tải được danh sách thiết bị")
+        // pymobiledevice3 usbmux list uses Identifier / UniqueDeviceID /
+        // DeviceName. Older tooling sometimes uses udid/name or nested
+        // Properties. Decode all grounded variants without silently dropping.
+        let (data, response) = try await URLSession.shared.data(for: request("/devices"))
+        guard let http = response as? HTTPURLResponse else {
+            throw APIError(message: "Máy Windows không phản hồi khi quét thiết bị.")
+        }
+        guard (200...299).contains(http.statusCode) else {
+            let detail = (try? JSONSerialization.jsonObject(with: data) as? [String: Any])?["detail"] as? String
+            throw APIError(message: "Không tải được thiết bị (HTTP \(http.statusCode)): \(detail ?? "Kiểm tra Apple Mobile Device Service trên Windows.")")
         }
         guard let root = try JSONSerialization.jsonObject(with: data) as? [String: Any],
-              let devices = root["devices"] as? [[String: Any]] else { return [] }
-        return devices.compactMap { d in
-            guard let udid = (d["udid"] ?? d["serial"] ?? d["serial_number"] ?? d["UniqueDeviceID"] ?? d["identifier"]) as? String else { return nil }
-            let name = (d["device_name"] ?? d["name"] ?? d["DeviceName"]) as? String ?? "iPhone / iPad"
-            return DeviceInfo(id: udid, name: name)
+              let entries = root["devices"] as? [Any] else {
+            throw APIError(message: "Danh sách thiết bị từ Windows không đúng định dạng.")
         }
+
+        func value(_ dictionary: [String: Any], keys: [String]) -> String? {
+            for key in keys {
+                if let result = dictionary[key] as? String {
+                    let trimmed = result.trimmingCharacters(in: .whitespacesAndNewlines)
+                    if !trimmed.isEmpty { return trimmed }
+                }
+            }
+            return nil
+        }
+        var devices: [DeviceInfo] = []
+        var seen = Set<String>()
+        for entry in entries {
+            let item = (entry as? [String: Any]) ?? [:]
+            let properties = (item["Properties"] as? [String: Any]) ?? [:]
+            let keys = ["UniqueDeviceID", "Identifier", "udid", "identifier", "serial_number", "SerialNumber", "serial"]
+            let id = value(item, keys: keys)
+                ?? value(properties, keys: keys)
+                ?? (entry as? String)?.trimmingCharacters(in: .whitespacesAndNewlines)
+            guard let udid = id, !udid.isEmpty, seen.insert(udid).inserted else { continue }
+            let name = value(item, keys: ["DeviceName", "device_name", "name"])
+                ?? value(properties, keys: ["DeviceName", "device_name", "name"])
+                ?? "iPhone / iPad"
+            devices.append(DeviceInfo(id: udid, name: name))
+        }
+        // Do not misrepresent a nonempty but incompatible response as no device.
+        if !entries.isEmpty && devices.isEmpty {
+            throw APIError(message: "Windows nhận thiết bị nhưng thiếu mã UDID phù hợp. Hãy cập nhật pymobiledevice3.")
+        }
+        return devices
     }
 }
 

@@ -61,6 +61,13 @@ class Database:
                     kind TEXT NOT NULL, detail TEXT NOT NULL, created_at TEXT NOT NULL
                 );
             ''')
+            columns = {row['name'] for row in db.execute('PRAGMA table_info(installations)')}
+            if 'signing_mode' not in columns:
+                db.execute("ALTER TABLE installations ADD COLUMN signing_mode TEXT NOT NULL DEFAULT 'legacy'")
+            # Compatibility with early experimental mode encoding (auto_renew=2).
+            db.execute("""UPDATE installations
+                       SET signing_mode='apple_personal', auto_renew=1
+                       WHERE auto_renew=2 AND signing_mode='legacy'""")
 
     def query(self, sql: str, args: tuple = ()) -> list[dict[str, Any]]:
         with self.connect() as db:

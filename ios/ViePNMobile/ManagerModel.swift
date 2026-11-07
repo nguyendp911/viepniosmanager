@@ -14,10 +14,19 @@ final class ManagerModel: ObservableObject {
     var isConfigured: Bool { !serverURL.isEmpty && !token.isEmpty }
     var client: APIClient { APIClient(server: serverURL, token: token) }
 
-    func saveConnection(url: String, token: String) {
-        serverURL = url.trimmingCharacters(in: .whitespacesAndNewlines)
-        self.token = token.trimmingCharacters(in: .whitespacesAndNewlines)
-        SecureStore.setToken(self.token)
+    func saveConnection(url: String, token: String) throws {
+        let address = url.trimmingCharacters(in: .whitespacesAndNewlines)
+        let secret = token.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard APIClient.allowedServerURL(address) else {
+            throw APIError(message: "Từ xa phải dùng HTTPS. Hãy nhập URL Tailscale Serve https://...ts.net")
+        }
+        guard secret.count >= 20 else {
+            throw APIError(message: "Access token không hợp lệ. Hãy sao chép token từ Windows.")
+        }
+        serverURL = address
+        self.token = secret
+        SecureStore.setToken(secret)
+        error = nil
     }
 
     func load() async {

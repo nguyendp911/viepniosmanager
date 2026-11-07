@@ -44,6 +44,11 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
+      - name: Validate updater offline without network access
+        shell: pwsh
+        run: |
+          & ./windows/update-viepn.ps1 -SelfTest
+          if ($LASTEXITCODE -and $LASTEXITCODE -ne 0) { throw 'Updater self-test failed' }
       - name: Windows portable install smoke test
         shell: pwsh
         run: |

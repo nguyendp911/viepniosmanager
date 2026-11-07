@@ -62,6 +62,19 @@ struct Overview: Codable {
     let renewalHours: Int
 }
 
+struct DoctorCheck: Codable, Identifiable {
+    let key: String
+    let ok: Bool
+    let tip: String
+    var id: String { key }
+}
+struct DoctorReport: Codable {
+    let checks: [DoctorCheck]
+    let okCount: Int
+    let total: Int
+    let note: String
+}
+
 struct JobResponse: Codable { let jobId: String }
 struct CheckResponse: Codable { let queuedJobIds: [String] }
 struct DeviceInfo: Identifiable {

@@ -3,7 +3,7 @@
 :root{--bg:#080e1a;--panel:#111d30;--panel2:#15253b;--stroke:#29405c;--text:#e7f0fe;--muted:#8ba4c0;--blue:#609cff;--mint:#52d3b1;--red:#ff7788;--gold:#f4be71}*{box-sizing:border-box}body{margin:0;font-family:Inter,-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif;background:radial-gradient(circle at 60% -10%,#1b3152 0,transparent 35%),var(--bg);color:var(--text)}button,input,select{font:inherit}button{cursor:pointer}button:disabled{opacity:.45;cursor:wait}a{color:var(--blue)}.layout{display:flex;min-height:100vh}.sidebar{width:248px;background:#0b1424;border-right:1px solid var(--stroke);padding:25px 16px;position:sticky;top:0;height:100vh}.brand{display:flex;gap:12px;align-items:center;padding:8px 10px 36px;font-size:18px;font-weight:760}.brandmark{height:42px;width:42px;border-radius:13px;background:linear-gradient(135deg,#397dd5,#63dcc3);display:grid;place-items:center;font-size:23px;color:#071324}.brand small{display:block;font-size:10px;letter-spacing:1.9px;color:var(--muted);font-weight:600;margin-top:4px}.navbutton{display:flex;align-items:center;gap:12px;width:100%;border:0;background:transparent;color:var(--muted);padding:14px 14px;text-align:left;border-radius:12px;margin-bottom:7px}.navbutton.active,.navbutton:hover{background:var(--panel2);color:var(--text)}.sidebar footer{position:absolute;bottom:24px;color:var(--muted);font-size:12px;line-height:1.7;padding:0 10px}.main{width:100%;max-width:1480px;margin:0 auto;padding:30px 35px 70px}.top{display:flex;align-items:center;justify-content:space-between;margin-bottom:30px;gap:18px}h1{font-size:27px;margin:4px 0 6px;letter-spacing:-.6px}h2{font-size:18px;margin:0 0 17px}p{color:var(--muted);line-height:1.55}.tag{font-size:12px;letter-spacing:.5px;color:var(--muted)}.pill{padding:9px 13px;border:1px solid var(--stroke);border-radius:100px;font-size:12px;display:inline-flex;gap:8px;align-items:center;color:var(--mint)}.dot{display:inline-block;height:7px;width:7px;border-radius:50%;background:var(--mint)}.dot.off{background:var(--red)}.button{border:1px solid var(--stroke);border-radius:10px;background:var(--panel2);color:var(--text);padding:11px 14px;font-weight:600}.button.primary{border-color:#357acb;background:linear-gradient(120deg,#2063bd,#397ed9)}.button.subtle{background:transparent}.button:hover{filter:brightness(1.16)}.button.danger{color:var(--red);border-color:#784357;background:#3d2635}.button.danger:hover{background:#553142}.library-actions{display:flex;gap:10px;align-items:center;justify-content:flex-end;flex-wrap:wrap}.library-actions .button{white-space:nowrap}.small{font-size:12px;padding:7px 10px}.stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:15px;margin-bottom:18px}.stat{background:var(--panel);border:1px solid var(--stroke);border-radius:17px;padding:21px;min-width:0}.stat .number{font-size:30px;font-weight:750;display:block;margin:10px 0 6px}.stat .label{font-size:12px;color:var(--muted)}.stat .glyph{float:right;color:var(--blue);font-size:23px}.split{display:grid;grid-template-columns:1.6fr 1fr;gap:18px}.panel{background:var(--panel);border:1px solid var(--stroke);border-radius:17px;padding:22px;margin-bottom:18px;min-width:0}.panel-head{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:14px}.panel-head h2{margin:0}.muted{color:var(--muted);font-size:13px}.row{display:flex;align-items:center;gap:12px;flex-wrap:wrap}.item{display:flex;align-items:center;gap:12px;padding:15px 0;border-top:1px solid var(--stroke)}.item:first-of-type{border-top:0}.square{flex:0 0 44px;height:44px;border-radius:12px;background:linear-gradient(135deg,#183f70,#17686b);display:grid;place-items:center;font-size:21px}.details{flex:1;min-width:120px}.name{font-weight:700;font-size:14px;overflow-wrap:anywhere}.sub{color:var(--muted);font-size:12px;margin-top:5px;overflow-wrap:anywhere}.expiration{font-size:12px;color:var(--mint);font-weight:650}.expiration.warn{color:var(--gold)}.expiration.bad{color:var(--red)}.progress{height:5px;background:#29405c;border-radius:5px;overflow:hidden;margin-top:8px}.bar{height:100%;background:var(--mint)}.bar.warn{background:var(--gold)}.bar.bad{background:var(--red)}.placeholder{text-align:center;padding:42px 12px;color:var(--muted);font-size:13px}.input{background:#091626;border:1px solid var(--stroke);border-radius:10px;color:var(--text);padding:12px;width:100%;min-height:44px}.input:focus{outline:1px solid var(--blue)}.label{font-size:12px;color:var(--muted);display:block;margin-bottom:8px}.field{margin-bottom:14px}.drawer{display:none}.drawer.active{display:block}.tool{display:flex;justify-content:space-between;border-top:1px solid var(--stroke);padding:12px 0;font-size:13px}.tool:first-of-type{border-top:0}.ok{color:var(--mint)}.notok{color:var(--red)}.iconbtn{width:39px;height:39px;border-radius:10px;display:grid;place-items:center;border:1px solid var(--stroke);background:var(--panel2);color:var(--text)}.toast{position:fixed;right:20px;bottom:20px;background:#1d3b50;color:white;padding:15px;border:1px solid #39858b;border-radius:12px;max-width:420px;box-shadow:0 10px 35px #0005;z-index:20}.toast.error{background:#472b3a;border-color:#c15264}.login-shade{position:fixed;inset:0;background:#060c16db;display:grid;place-items:center;z-index:10}.login{width:min(440px,calc(100vw - 28px));background:var(--panel);border:1px solid var(--stroke);border-radius:22px;padding:30px;box-shadow:0 25px 100px #0009}.hide{display:none!important}.code{font:12px Consolas,monospace;color:var(--blue);word-break:break-all}.help{line-height:1.65;font-size:13px}.actions{display:flex;gap:8px;flex-wrap:wrap}.events{max-height:440px;overflow:auto}.event{padding:12px 0;border-top:1px solid var(--stroke);font-size:12px}.event span{display:block;color:var(--muted);margin-top:4px}.warnbox{border:1px solid #725535;border-radius:12px;background:#4a392226;color:#efc791;padding:13px;font-size:13px;line-height:1.6;margin:12px 0}.footerNote{color:var(--muted);font-size:11px;margin-top:22px}@media(max-width:1050px){.stats{grid-template-columns:repeat(2,1fr)}.split{grid-template-columns:1fr}}@media(max-width:700px){.layout{display:block}.sidebar{position:static;width:100%;height:auto;padding:12px;border-right:0;border-bottom:1px solid var(--stroke)}.brand{padding:4px 7px 12px}.sidebar nav{display:flex;overflow:auto;gap:4px}.navbutton{white-space:nowrap;margin:0;font-size:12px}.sidebar footer{display:none}.main{padding:22px 15px}.stats{gap:9px}.stat{padding:13px}.stat .number{font-size:23px}.panel{padding:15px}.top{flex-wrap:wrap}h1{font-size:23px}}
 .steps{display:grid;gap:16px;grid-template-columns:repeat(2,minmax(0,1fr));margin-top:14px}.steps>div{background:#101b2c;border:1px solid var(--stroke);border-radius:14px;padding:17px}.steps b{color:var(--text)}.steps a.button{display:inline-block;text-decoration:none;margin:3px 4px 3px 0}@media(max-width:850px){.steps{grid-template-columns:1fr}}
 </style></head><body>
-<div class="layout"><aside class="sidebar"><div class="brand"><div class="brandmark">⌁</div><div>ViePN <span style="color:var(--blue)">iOS</span><small>DEVICE MANAGER</small></div></div><nav><button class="navbutton active" data-section="dashboard">◈ &nbsp; Tổng quan</button><button class="navbutton" data-section="free">◇ &nbsp; Apple ID miễn phí</button><button class="navbutton" data-section="library">▣ &nbsp; Thư viện IPA</button><button class="navbutton" data-section="devices">▥ &nbsp; Thiết bị</button><button class="navbutton" data-section="renewals">↻ &nbsp; Gia hạn</button><button class="navbutton" data-section="settings">⚙ &nbsp; Cài đặt</button></nav><footer>V1.2 · Windows Companion<br>Local-first · không gửi Apple ID</footer></aside>
+<div class="layout"><aside class="sidebar"><div class="brand"><div class="brandmark">⌁</div><div>ViePN <span style="color:var(--blue)">iOS</span><small>DEVICE MANAGER</small></div></div><nav><button class="navbutton active" data-section="dashboard">◈ &nbsp; Tổng quan</button><button class="navbutton" data-section="free">◇ &nbsp; Apple ID miễn phí</button><button class="navbutton" data-section="library">▣ &nbsp; Thư viện IPA</button><button class="navbutton" data-section="devices">▥ &nbsp; Thiết bị</button><button class="navbutton" data-section="renewals">↻ &nbsp; Gia hạn</button><button class="navbutton" data-section="settings">⚙ &nbsp; Cài đặt</button></nav><footer>V1.3 · Windows Companion<br>Local-first · không gửi Apple ID</footer></aside>
 <main class="main"><div class="top"><div><div class="tag">WORKSPACE / IPHONE MANAGEMENT</div><h1 id="pageTitle">Tổng quan</h1><div class="muted">Quản lý IPA, thiết bị, chữ ký và lịch gia hạn</div></div><div class="row"><span class="pill"><i class="dot" id="serverDot"></i><span id="serverStatus">API sẵn sàng</span></span><button class="iconbtn" id="reload" title="Làm mới">↻</button></div></div>
 <section class="drawer active" id="dashboard"><div class="stats"><div class="stat"><span class="glyph">▣</span><div class="label">Ứng dụng IPA</div><span class="number" id="countIpa">0</span><div class="label">Trong thư viện</div></div><div class="stat"><span class="glyph">▥</span><div class="label">Thiết bị</div><span class="number" id="countDevices">–</span><div class="label">Đang phát hiện</div></div><div class="stat"><span class="glyph">◷</span><div class="label">Sắp hết hạn</div><span class="number" id="countDue">0</span><div class="label">Trong vòng 48 giờ</div></div><div class="stat"><span class="glyph">✓</span><div class="label">Cài đặt theo dõi</div><span class="number" id="countInstall">0</span><div class="label">Trên các thiết bị</div></div></div>
 <div class="split"><section class="panel"><div class="panel-head"><h2>Ứng dụng đang theo dõi</h2><button class="button small subtle" data-go="renewals">Xem tất cả</button></div><div id="quickInstalls" class="placeholder">Chưa có ứng dụng</div></section><section class="panel"><div class="panel-head"><h2>Thao tác nhanh</h2></div><div class="field"><label class="label">Nhập IPA từ máy tính</label><input type="file" id="quickIpa" accept=".ipa" class="input"></div><button class="button primary" id="quickUpload">↑ &nbsp; Tải IPA lên</button><div class="warnbox">Bạn dùng Apple ID miễn phí? Chọn tab <b>Apple ID miễn phí</b> để ViePN tự xin profile, ký và cài ứng dụng. Các nút Ký/Cài trực tiếp trong ViePN vẫn yêu cầu chứng chỉ P12.</div><div class="tool"><span>Signing Engine P12 (zsign)</span><strong id="toolSign">Chưa kiểm tra</strong></div><div class="tool"><span>Thiết bị (pymobiledevice3)</span><strong id="toolDevice">Chưa kiểm tra</strong></div></section></div>
@@ -15,15 +15,43 @@
       <h2>Apple ID miễn phí — ký và gia hạn trực tiếp trong ViePN</h2>
       <span class="pill">ViePN Native Signing</span>
     </div>
-    <p class="help">ViePN tự lấy provisioning profile mới từ Apple, ký IPA, cài lên iPhone và quét gia hạn trước 48 giờ. Không cần ứng dụng SideStore, AltStore hoặc iLoader. Đăng nhập Apple ID/2FA chỉ trong PowerShell trên máy Windows, không nhập mật khẩu vào web.</p>
+    <p class="help">ViePN tự lấy provisioning profile mới từ Apple, ký IPA, cài lên iPhone và quét gia hạn trước 48 giờ. Không cần ứng dụng SideStore, AltStore hoặc iLoader. Có thể đăng nhập và xác minh 2FA trực tiếp trong dashboard tại localhost hoặc dùng PowerShell dự phòng. Không nhập tài khoản trên giao diện ViePN truy cập qua mạng LAN.</p>
     <div class="warnbox">Giao thức xác thực Personal Team của Apple không công khai. Đăng nhập cần dữ liệu anisette kiểu Mac; nếu dùng dịch vụ cộng đồng, đó vẫn là một phụ thuộc mạng bên ngoài. ViePN sẽ hỏi đồng ý trước khi sử dụng. Cần iPhone kết nối và máy Windows đang bật khi gia hạn. Chưa kiểm chứng trực tiếp trên iPhone của bạn.</div>
     <div class="steps">
       <div>
-        <b>1. Đăng nhập Apple ID và xác minh 2FA</b>
-        <p>Chạy PowerShell trên chính máy Windows, tại thư mục ViePN:</p>
-        <pre style="white-space:pre-wrap;overflow-wrap:anywhere">powershell -ExecutionPolicy Bypass -File .\windows\apple-login.ps1</pre>
-        <p class="help">Lần đầu bạn chọn máy chủ anisette của chính mình hoặc chủ động cho phép dịch vụ cộng đồng. ViePN chỉ lưu phiên xác thực trong hồ sơ Windows của bạn.</p>
-        <div class="actions"><button id="appleCheck" class="button">Kiểm tra tài khoản</button><span id="appleNativeStatus" class="muted">Chưa kiểm tra</span></div>
+        <b>1. Quản lý và đăng nhập Apple ID</b>
+        <p class="help">Đăng nhập, xác minh 2FA, chuyển tài khoản hoặc đăng xuất ngay trên máy Windows này. Mật khẩu không được lưu vào thư viện IPA/SQLite; phiên Apple được lưu cục bộ để dùng lại.</p>
+        <div class="actions" style="margin-bottom:12px">
+          <button type="button" class="button" id="appleCheck">↻ Kiểm tra tài khoản</button>
+          <span class="muted" id="appleNativeStatus">Chưa kiểm tra</span>
+        </div>
+        <div class="field"><label class="label" for="appleAccountSelect">Tài khoản đã đăng nhập</label>
+          <select class="input" id="appleAccountSelect"><option value="">Chưa có tài khoản</option></select></div>
+        <div class="actions" style="margin-bottom:18px">
+          <button type="button" class="button small" id="appleSwitch">Chuyển tài khoản</button>
+          <button type="button" class="button small danger" id="appleLogoutOne">Đăng xuất tài khoản chọn</button>
+          <button type="button" class="button small danger" id="appleLogoutAll">Đăng xuất tất cả</button>
+        </div>
+        <div class="field"><label class="label" for="appleEmail">Apple ID (email)</label>
+          <input class="input" id="appleEmail" type="email" autocomplete="username" placeholder="example@icloud.com"></div>
+        <div class="field"><label class="label" for="applePassword">Mật khẩu Apple ID</label>
+          <input class="input" id="applePassword" type="password" autocomplete="off" placeholder="Chỉ nhập trên máy Windows này"></div>
+        <div class="field"><label class="label" for="appleAnisetteMode">Nguồn Anisette (chỉ chọn lại nếu cần)</label>
+          <select class="input" id="appleAnisetteMode">
+            <option value="saved">Sử dụng cấu hình đã lưu</option>
+            <option value="private">Máy chủ Anisette HTTPS riêng</option>
+            <option value="community">Dịch vụ Anisette cộng đồng</option>
+          </select></div>
+        <div class="field hide" id="appleServerWrap"><label class="label" for="appleAnisetteServer">URL máy chủ HTTPS</label><input class="input" id="appleAnisetteServer" type="url" placeholder="https://anisette.example.com" autocomplete="off"></div>
+        <label class="help hide" id="appleConsentWrap"><input type="checkbox" id="appleAnisetteConsent"> Tôi đồng ý gửi dữ liệu Anisette tới dịch vụ cộng đồng. Dịch vụ này có thể thấy IP và định danh thiết bị, nhưng không nhận mật khẩu Apple ID qua luồng ViePN.</label>
+        <div class="actions" style="margin-top:12px"><button type="button" class="button primary" id="appleLoginButton">Đăng nhập Apple ID</button></div>
+        <div class="hide" id="appleTwoFactorPanel" style="margin-top:16px;padding:12px;border:1px solid var(--stroke);border-radius:12px">
+          <div class="name">Apple yêu cầu xác minh hai yếu tố</div>
+          <p class="help" id="appleTwoFactorHint">Nhập mã 6 chữ số Apple gửi đến thiết bị tin cậy.</p>
+          <div class="field"><label class="label" for="appleTwoFactorCode">Mã xác minh 2FA</label><input class="input" id="appleTwoFactorCode" type="text" inputmode="numeric" pattern="[0-9]{6}" maxlength="6" autocomplete="one-time-code" placeholder="000000"></div>
+          <div class="actions"><button type="button" class="button primary" id="appleVerifyButton">Xác minh</button><button type="button" class="button" id="appleCancel2FA">Hủy</button></div>
+        </div>
+        <p class="help">Chỉ cho phép thao tác Apple ID tại <code>http://127.0.0.1:8765</code> khi server chỉ lắng nghe localhost. Nếu đang chia sẻ dashboard qua LAN, hãy đăng nhập bằng PowerShell hoặc chuyển server về localhost. Đăng xuất ở đây xóa phiên Apple cục bộ, không xóa IPA hay gỡ app trên iPhone.</p>
       </div>
       <div>
         <b>2. Chọn IPA và iPhone</b>
@@ -83,7 +111,7 @@ function cleanDevices(raw){const arr=Array.isArray(raw)?raw:[];return arr.map(x=
 async function load(){try{let d=await api('/overview');state={...state,...d};render();$('serverDot').classList.remove('off');$('serverStatus').textContent='Đã kết nối';}catch(e){$('serverDot').classList.add('off');$('serverStatus').textContent='Chưa xác thực';notify(e.message,true)}}
 async function scan(){try{let d=await api('/devices');state.devices=cleanDevices(d.devices);render();notify(`Đã quét: ${state.devices.length} thiết bị`)}catch(e){notify(e.message,true)}}
 function busy(fn){return async ev=>{const btn=ev.currentTarget;btn.disabled=true;try{await fn(ev)}catch(e){notify(e.message,true)}finally{btn.disabled=false}}}
-document.querySelectorAll('[data-section]').forEach(el=>el.addEventListener('click',()=>showSection(el.dataset.section)));document.querySelectorAll('[data-go]').forEach(el=>el.addEventListener('click',()=>showSection(el.dataset.go)));
+document.querySelectorAll('[data-section]').forEach(el=>el.addEventListener('click',()=>{showSection(el.dataset.section);if(el.dataset.section==='free')checkNativeApple().catch(e=>notify(e.message,true));}));document.querySelectorAll('[data-go]').forEach(el=>el.addEventListener('click',()=>showSection(el.dataset.go)));
 $('loginBtn').onclick=busy(async()=>{token=$('token').value.trim();let d=await api('/overview');sessionStorage.setItem('viepn_token',token);$('loginShade').classList.add('hide');state={...state,...d};render();scan()});$('token').addEventListener('keydown',e=>{if(e.key==='Enter')$('loginBtn').click()});
 $('reload').onclick=busy(async()=>{await load();await scan()});$('scanDevices').onclick=busy(scan);
 $('quickUpload').onclick=busy(async()=>{await upload($('quickIpa').files[0],'ipas');notify('Đã thêm IPA');await load()});$('uploadIpa').onclick=busy(async()=>{await upload($('ipaFile').files[0],'ipas');notify('Đã thêm IPA');await load()});$('uploadProfile').onclick=busy(async()=>{await upload($('profileFile').files[0],'profiles');notify('Đã thêm profile');await load()});
@@ -112,15 +140,96 @@ $('scanRenew').onclick=busy(async()=>{let r=await post('/renew/check',{});notify
 
 // The free Apple Account mode never sends Apple ID credentials to ViePN.
 
-async function checkNativeApple(){
-  const info=await api('/apple/status');
-  const el=$('appleNativeStatus');
-  el.textContent=info.authenticated ? ('Đã đăng nhập: '+(info.email||'Apple ID')) : 'Chưa đăng nhập Apple ID';
-  el.className=info.authenticated?'ok':'notok';
-  if(!info.anisette_configured)el.textContent+=' · Chưa cấu hình anisette';
-  return info;
+let applePendingChallenge = '';
+function updateAnisetteFields(){
+ const mode=$('appleAnisetteMode').value;
+ $('appleServerWrap').classList.toggle('hide',mode!=='private');
+ $('appleConsentWrap').classList.toggle('hide',mode!=='community');
 }
-$('appleCheck').onclick=busy(async()=>{await checkNativeApple()});
+$('appleAnisetteMode').addEventListener('change',updateAnisetteFields);
+updateAnisetteFields();
+function resetAppleSecrets(){
+ $('applePassword').value='';
+ $('appleTwoFactorCode').value='';
+ applePendingChallenge='';
+ $('appleTwoFactorPanel').classList.add('hide');
+}
+async function checkNativeApple(){
+ const status=await api('/apple/status');
+ const el=$('appleNativeStatus');
+ el.textContent=status.authenticated ? ('Đã đăng nhập: '+(status.email||'Apple ID')) : 'Chưa đăng nhập Apple ID';
+ el.className=status.authenticated?'ok':'notok';
+ if(!status.anisette_configured)el.textContent+=' · Chưa cấu hình anisette';
+ const state=await api('/apple/accounts');
+ const previous=$('appleAccountSelect').value;
+ $('appleAccountSelect').innerHTML=state.accounts.length?
+     state.accounts.map(a=>'<option value="'+esc(a.email)+'">'+esc(a.email)+(a.active?' · Đang dùng':'')+'</option>').join(''):
+     '<option value="">Chưa có tài khoản</option>';
+ $('appleAccountSelect').value=state.accounts.some(a=>a.email===previous)?previous:(state.active||'');
+ return status;
+}
+$('appleCheck').onclick=busy(checkNativeApple);
+$('appleLoginButton').onclick=busy(async()=>{
+ const email=$('appleEmail').value.trim(),password=$('applePassword').value;
+ if(!email||!password)throw Error('Nhập Apple ID và mật khẩu');
+ const choice=$('appleAnisetteMode').value;
+ if(choice!=='saved'){
+   await post('/apple/auth/configure',{
+     mode:choice,server:choice==='private'?$('appleAnisetteServer').value.trim():null,
+     consent:choice==='community'&&$('appleAnisetteConsent').checked
+   });
+ }else{
+   const status=await api('/apple/status');
+   if(!status.anisette_configured)throw Error('Hãy chọn máy chủ Anisette riêng hoặc đồng ý dùng dịch vụ cộng đồng');
+ }
+ try{
+   const result=await post('/apple/auth/login',{email,password});
+   if(result.status==='2fa_required'){
+     applePendingChallenge=result.challenge;
+     $('appleTwoFactorHint').textContent='Apple yêu cầu mã 6 chữ số (phương thức: '+(result.method==='sms'?'SMS':'Thiết bị tin cậy')+'). Thời hạn '+Math.ceil(result.expires_in/60)+' phút.';
+     $('appleTwoFactorPanel').classList.remove('hide');
+     $('appleTwoFactorCode').focus();
+     notify('Nhập mã xác minh Apple 2FA để hoàn tất');
+   }else{
+     resetAppleSecrets();await checkNativeApple();notify('Đã đăng nhập Apple ID');
+   }
+ }finally{
+   $('applePassword').value='';
+ }
+});
+$('appleVerifyButton').onclick=busy(async()=>{
+ if(!applePendingChallenge)throw Error('Yêu cầu 2FA đã hết hạn, hãy đăng nhập lại');
+ const result=await post('/apple/auth/verify',{challenge:applePendingChallenge,code:$('appleTwoFactorCode').value.trim()});
+ if(result.status!=='authenticated')throw Error('Chưa thể hoàn thành xác minh');
+ resetAppleSecrets();
+ await checkNativeApple();
+ notify('Apple ID đã được xác minh và lưu phiên');
+});
+$('appleCancel2FA').onclick=busy(async()=>{
+ await post('/apple/auth/cancel',{});
+ resetAppleSecrets();
+ notify('Đã hủy xác minh 2FA');
+});
+$('appleSwitch').onclick=busy(async()=>{
+ const email=$('appleAccountSelect').value;
+ if(!email)throw Error('Chưa chọn Apple ID');
+ await post('/apple/auth/switch',{email});
+ await checkNativeApple();notify('Đã chuyển sang '+email);
+});
+$('appleLogoutOne').onclick=busy(async()=>{
+ const email=$('appleAccountSelect').value;
+ if(!email)throw Error('Chưa chọn Apple ID');
+ if(!window.confirm('Đăng xuất Apple ID '+email+' trên máy Windows? Thư viện IPA được giữ nguyên.'))return;
+ await post('/apple/auth/logout',{email});
+ resetAppleSecrets();
+ await checkNativeApple();notify('Đã đăng xuất '+email);
+});
+$('appleLogoutAll').onclick=busy(async()=>{
+ if(!window.confirm('Đăng xuất TẤT CẢ Apple ID khỏi ViePN trên Windows? Các tác vụ gia hạn có thể thất bại cho đến khi đăng nhập lại.'))return;
+ await post('/apple/auth/logout',{email:null});
+ resetAppleSecrets();
+ await checkNativeApple();notify('Đã đăng xuất tất cả Apple ID');
+});
 $('appleSign').onclick=busy(async()=>{
   const ipa_id=$('freeIpaChoice').value,udid=$('freeDeviceChoice').value;
   if(!ipa_id||!udid)throw Error('Chon file IPA va iPhone, sau do quet lai thiet bi');

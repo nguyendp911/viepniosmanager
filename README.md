@@ -1,4 +1,4 @@
-# ViePN iOS Manager 1.4 — Apple ID miễn phí, ký trực tiếp trên Windows
+# ViePN iOS Manager 2.1 — Apple ID miễn phí, ký trực tiếp trên Windows
 
 ViePN là công cụ Windows + web dashboard để **đọc IPA, kết nối iPhone, xác thực Apple ID miễn phí (2FA), xin provisioning profile, ký IPA, cài lên iPhone và gia hạn trước khi hết 7 ngày**. Không cần cài ứng dụng SideStore/AltStore/iLoader.
 
@@ -22,6 +22,14 @@ Nếu dùng ZIP (không có thư mục `.git`), tải bản mới từ GitHub v�
 5. **Đăng xuất và đăng nhập lại:** Trong cùng tab, chọn tài khoản rồi nhấn **Đăng xuất tài khoản chọn** (hoặc **Đăng xuất tất cả**). Khi cần dùng lại, nhập Apple ID và 2FA nếu được yêu cầu. Dữ liệu IPA và bản cài vẫn được giữ nguyên. Có thể dùng nút **Chuyển tài khoản** để chọn Apple ID đã lưu phiên; không cần đăng nhập lại nếu phiên còn hiệu lực.
 
 Nếu không muốn nhập tài khoản trong trình duyệt, cách nhập 2FA bằng PowerShell vẫn được hỗ trợ: `powershell -ExecutionPolicy Bypass -File .\windows\apple-login.ps1`.
+
+## Nâng cấp 1.6 đến 2.1 — Sao lưu, Build Manager, Retry, iOS 2.0, Windows Portable
+
+Đã bổ sung **Connection Doctor**, sao lưu ZIP kèm SHA-256 trước khi xóa hàng loạt, phục hồi offline, nhóm Dev/Test/Stable/Archive, lọc và tìm bản build, giới hạn retry ký/gia hạn và giao diện iPhone mới.
+
+**Bản Windows Portable 2.1:** Mở [GitHub Actions](https://github.com/nguyendp911/viepniosmanager/actions), chọn build mới nhất đạt kiểm thử và tải artifact `ViePN-Windows-Portable-2.1`. Giải nén ZIP, xác minh SHA256, nhấp đúp `Install-ViePN.bat` để kiểm tra gói trước khi cập nhật mã nguồn tại `C:\ViePN-iOS-Manager`. Dừng các cửa sổ ViePN trước khi cập nhật. Dữ liệu IPA/token/Apple session trong `%LOCALAPPDATA%\ViePN-iOS-Manager` không bị ghi đè. Sau đó nhấp đúp `Start-ViePN.bat`.
+
+**Lưu ý:** Đây là bộ cài ZIP/PowerShell, **không phải EXE/MSI đã ký số**. IPA GitHub Actions là bản **unsigned**: cần ký trước khi cài lên iPhone. Xem [toàn bộ lộ trình, hạn chế thực tế và hướng dẫn rollback](docs/ROADMAP_1_6_TO_2_1.md).
 
 ## Khởi động nhanh và xóa IPA khỏi thư viện (Windows)
 

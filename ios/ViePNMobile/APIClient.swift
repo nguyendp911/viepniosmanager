@@ -14,12 +14,36 @@ struct APIClient {
         return d
     }()
 
+    // HTTPS is mandatory for Internet/Tailscale connections. Keep HTTP only
+    // for explicit RFC1918 LAN addresses and localhost during setup.
+    static func allowedServerURL(_ value: String) -> Bool {
+        guard let url = URLComponents(string: value.trimmingCharacters(in: .whitespacesAndNewlines)),
+              let scheme = url.scheme?.lowercased(),
+              let host = url.host?.lowercased(),
+              !host.isEmpty,
+              url.user == nil, url.password == nil, url.query == nil,
+              url.fragment == nil else { return false }
+
+        if scheme == "https" { return true }
+        guard scheme == "http" else { return false }
+        if host == "localhost" || host == "127.0.0.1" || host.hasSuffix(".local") {
+            return true
+        }
+        let parts = host.split(separator: ".").compactMap { UInt8($0) }
+        guard parts.count == 4 else { return false }
+        return parts[0] == 10 ||
+               (parts[0] == 172 && (16...31).contains(parts[1])) ||
+               (parts[0] == 192 && parts[1] == 168)
+    }
+
     private func request(_ path: String, method: String = "GET", contentType: String? = nil) throws -> URLRequest {
         guard let base = URL(string: server.trimmingCharacters(in: .whitespacesAndNewlines)),
               ["http", "https"].contains(base.scheme?.lowercased() ?? ""),
               base.host != nil else { throw APIError(message: "Địa chỉ máy chủ không hợp lệ") }
-        // Avoid leaking token to an untrusted internet endpoint by accident.
-        // Users should configure HTTPS on remotely accessible servers.
+        guard Self.allowedServerURL(server) else {
+            throw APIError(message: "Điều khiển từ xa bắt buộc sử dụng HTTPS. HTTP chỉ cho phép mạng LAN riêng.")
+        }
+        // Never include the access token in a URL's query or URL credentials.
         guard let url = URL(string: "/api" + path, relativeTo: base)?.absoluteURL else {
             throw APIError(message: "Không thể tạo URL")
         }

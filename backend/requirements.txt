@@ -1,6 +1,7 @@
 fastapi>=0.115,<1
 uvicorn>=0.30,<1
 python-multipart>=0.0.12,<1
+httpx>=0.27,<1  # Private remote gateway HTTP streaming client
 pymobiledevice3>=4,<13
 
 # ViePN native Apple Personal Team engine (no SideStore/AltStore runtime)

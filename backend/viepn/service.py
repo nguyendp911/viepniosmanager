@@ -180,9 +180,9 @@ class Manager:
             'auto_renew': bool(params.get('auto_renew', True)),
         })
         self.db.exec('''UPDATE installations SET source_ipa_id=?,
-                       auto_renew=? WHERE id=?''',
+                       auto_renew=?,signing_mode='apple_personal' WHERE id=?''',
                      (result['source_ipa_id'],
-                      2 if params.get('auto_renew', True) else 0,
+                      int(bool(params.get('auto_renew', True))),
                       installed['installation_id']))
         return {**installed, 'signing_mode': 'free_apple_id',
                 'signed_ipa_id': result['signed_ipa_id']}
@@ -209,11 +209,13 @@ class Manager:
                 'resign': False,
                 'auto_renew': True,
             })
-            self.db.exec('''UPDATE installations SET source_ipa_id=?,auto_renew=2,
+            self.db.exec('''UPDATE installations SET source_ipa_id=?,auto_renew=?,
+                           signing_mode='apple_personal',
                            current_ipa_id=?,expires_at=?,state='active',
                            last_success=?,last_error=NULL WHERE id=?''',
-                         (install['source_ipa_id'], result['signed_ipa_id'],
-                          result['expires_at'], utcnow(), installation_id))
+                         (install['source_ipa_id'], install['auto_renew'],
+                          result['signed_ipa_id'], result['expires_at'],
+                          utcnow(), installation_id))
             return {**outcome, 'signing_mode': 'free_apple_id',
                     'expires_at': result['expires_at']}
         except Exception as exc:
@@ -258,7 +260,7 @@ class Manager:
         install = self.db.one('SELECT * FROM installations WHERE id=?', (installation_id,))
         if not install:
             raise ValueError('Installation not found')
-        if int(install.get('auto_renew') or 0) == 2:
+        if install.get('signing_mode') == 'apple_personal':
             return await self._apple_renew(install)
         self.db.exec('UPDATE installations SET last_attempt=?,state=? WHERE id=?',
                      (utcnow(), 'renewing', installation_id))
@@ -279,7 +281,7 @@ class Manager:
     def due_installations(self) -> list[dict]:
         now = datetime.now(timezone.utc)
         cutoff = now + timedelta(hours=self.cfg.renewal_hours)
-        rows = self.db.query('SELECT * FROM installations WHERE auto_renew IN (1,2)')
+        rows = self.db.query('SELECT * FROM installations WHERE auto_renew=1')
         result = []
         for r in rows:
             try:

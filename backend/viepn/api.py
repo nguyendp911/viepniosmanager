@@ -77,6 +77,17 @@ class NotificationChoice(BaseModel):
     consent: bool = False
 
 
+class RenameIPARequest(BaseModel):
+    alias: str = Field(default='', max_length=80)
+
+
+class DeleteIPARequest(BaseModel):
+    all: bool = False
+    ipa_ids: list[str] = Field(default_factory=list, max_length=10000)
+    force: bool = False
+    confirm: str
+
+
 class RenewPayload(BaseModel):
     installation_id: str
 
@@ -93,7 +104,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         yield
         await manager.stop()
 
-    app = FastAPI(title='ViePN iOS Manager', version='1.4.0', lifespan=lifespan,
+    app = FastAPI(title='ViePN iOS Manager', version='1.5.0', lifespan=lifespan,
                   docs_url=None, redoc_url=None, openapi_url=None)
     app.state.manager = manager
 
@@ -133,7 +144,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
 
     @app.get('/api/health')
     def health():
-        return {'ok': True, 'service': 'ViePN iOS Manager', 'version': '1.4.0'}
+        return {'ok': True, 'service': 'ViePN iOS Manager', 'version': '1.5.0'}
 
     @app.get('/api/overview', dependencies=[Depends(auth)])
     def overview():
@@ -205,13 +216,40 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         finally:
             target.unlink(missing_ok=True)
 
-    @app.delete('/api/ipas/{ipa_id}', dependencies=[Depends(auth)])
-    async def delete_library_ipa(ipa_id: str):
-        # Synchronize with signing/installation workers before deleting a file.
-        # This only removes local library data; it NEVER uninstalls from iPhone.
+    @app.patch('/api/ipas/{ipa_id}/label', dependencies=[Depends(auth)])
+    async def rename_library_ipa(ipa_id: str, payload: RenameIPARequest):
         async with manager.lock:
             try:
-                result = manager.delete_ipa(ipa_id)
+                result = manager.rename_ipa(ipa_id, payload.alias)
+            except ValueError as exc:
+                raise HTTPException(status_code=400, detail=str(exc)) from exc
+        if result is None:
+            raise HTTPException(404, detail='IPA not found')
+        return result
+
+    @app.post('/api/ipas/bulk-delete', dependencies=[Depends(auth)])
+    async def bulk_delete_ipas(payload: DeleteIPARequest):
+        # The confirmation phrase is an additional explicit destructive-action
+        # safeguard, NOT an alternative to bearer authentication.
+        phrase = 'DELETE ALL IPAS' if payload.all else 'DELETE SELECTED IPAS'
+        if payload.confirm != phrase:
+            raise HTTPException(400, detail='Please confirm the destructive action')
+        async with manager.lock:
+            ids = [r['id'] for r in manager.db.query('SELECT id FROM ipa')] if payload.all else payload.ipa_ids
+            try:
+                return manager.delete_ipas(ids, force=payload.force)
+            except ValueError as exc:
+                raise HTTPException(409, detail=str(exc)) from exc
+            except OSError as exc:
+                raise HTTPException(500, detail='Could not remove IPA files') from exc
+
+    @app.delete('/api/ipas/{ipa_id}', dependencies=[Depends(auth)])
+    async def delete_library_ipa(ipa_id: str, force: bool = False):
+        # Removes local file and metadata, not the installed iPhone application.
+        # force=True also deletes renewal tracking; never implicit.
+        async with manager.lock:
+            try:
+                result = manager.delete_ipa(ipa_id, force=force)
             except ValueError as exc:
                 raise HTTPException(status_code=409, detail=str(exc)) from exc
             except OSError as exc:

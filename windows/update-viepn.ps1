@@ -175,9 +175,6 @@ try {
     Stop-OwnViePN
     Write-Host "[ViePN] Installing verified Windows source into: $Root"
     & (Join-Path $source 'windows\install-portable.ps1') -Source $source -Destination $Root
-    if ($LASTEXITCODE -and $LASTEXITCODE -ne 0) {
-        throw 'Windows installation failed.'
-    }
     if (-not (Test-Path $IPAFolder)) {
         New-Item -ItemType Directory -Force -Path $IPAFolder | Out-Null
     }

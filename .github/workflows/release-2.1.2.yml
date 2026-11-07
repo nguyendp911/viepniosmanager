@@ -8,7 +8,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
 
 concurrency:
   group: viepn-release-2.1.2
@@ -158,5 +158,5 @@ jobs:
             "release-assets/ViePNMobile-2.1.2-UNSIGNED.ipa.sha256" \
             --target "$GITHUB_SHA" \
             --title "ViePN iOS Manager 2.1.2 (Stable)" \
-            --notes-file docs/RELEASE_2_1_1.md \
+            --notes-file docs/RELEASE_2_1_2.md \
             --latest

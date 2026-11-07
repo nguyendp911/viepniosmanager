@@ -294,7 +294,7 @@ private struct ConnectionView: View {
         Page(title: "Kết nối Windows") {
             Panel {
                 Text("ViePN Windows Companion").font(.headline)
-                Text("Kết nối iPhone đến máy tính Windows có chạy ViePN iOS Manager. Hai thiết bị cần liên lạc được với nhau.")
+                Text("Điều khiển ViePN trên Windows từ xa qua HTTPS và Tailscale VPN. Tailscale trên iPhone và Windows phải đăng nhập cùng mạng riêng.")
                     .font(.footnote).foregroundStyle(Palette.secondary)
                 VStack(alignment: .leading, spacing: 7) {
                     Text("Địa chỉ API").font(.caption).foregroundStyle(Palette.secondary)
@@ -308,13 +308,19 @@ private struct ConnectionView: View {
                         .padding(13).background(Palette.bg, in: RoundedRectangle(cornerRadius: 10))
                 }
                 Button {
-                    model.saveConnection(url: server, token: secret)
-                    Task { await model.load() }
+                    do {
+                        try model.saveConnection(url: server, token: secret)
+                        Task { await model.load() }
+                    } catch {
+                        model.error = error.localizedDescription
+                    }
                 } label: {
                     Label("Lưu và kết nối", systemImage: "link")
                         .frame(maxWidth: .infinity)
                 }.buttonStyle(.borderedProminent)
-                Text("Token được lưu trong Keychain trên iPhone. Hãy dùng HTTPS khi truy cập qua mạng không tin cậy; HTTP chỉ dành cho thử nghiệm LAN.")
+                Text("Điều khiển từ xa: cài và bật Tailscale trên iPhone. Nhập địa chỉ HTTPS của máy Windows do Tailscale Serve cung cấp, ví dụ https://viepn-pc.tailnet-name.ts.net.")
+                    .font(.caption).foregroundStyle(Palette.secondary)
+                Text("Access token được lưu trong Keychain. Ứng dụng từ chối HTTP qua Internet; HTTP LAN chỉ dùng để thử nghiệm.")
                     .font(.caption).foregroundStyle(.orange)
             }
             StatusView()

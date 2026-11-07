@@ -64,6 +64,9 @@ class Database:
                     id TEXT PRIMARY KEY, created_at TEXT NOT NULL
                 );
             ''')
+            ipa_columns = {row['name'] for row in db.execute('PRAGMA table_info(ipa)')}
+            if 'alias' not in ipa_columns:
+                db.execute("ALTER TABLE ipa ADD COLUMN alias TEXT")
             columns = {row['name'] for row in db.execute('PRAGMA table_info(installations)')}
             if 'signing_mode' not in columns:
                 db.execute("ALTER TABLE installations ADD COLUMN signing_mode TEXT NOT NULL DEFAULT 'legacy'")

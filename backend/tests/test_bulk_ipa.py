@@ -114,3 +114,16 @@ def test_ipa_alias_changes_visible_build_name_and_can_reset(tmp_path):
         assert c.get('/api/overview', headers=AUTH).json()['ipas'][0]['alias'] == 'TestFlight build #7'
         assert c.patch(f'/api/ipas/{ipa}/label', headers=AUTH,
                        json={'alias': ''}).json()['alias'] is None
+
+def test_build_channel_validation_and_filter_metadata(tmp_path):
+    app = create_app(config(tmp_path))
+    with TestClient(app) as c:
+        ipa = upload(c, tmp_path / "channel.ipa")
+        url = f'/api/ipas/{ipa}/channel'
+        assert c.patch(url, json={'channel': 'stable'}).status_code == 401
+        assert c.patch(url, headers=AUTH, json={'channel': 'everything'}).status_code == 400
+        assert c.patch(url, headers=AUTH, json={'channel': 'stable'}).json() == {
+            'id': ipa, 'channel': 'stable'
+        }
+        assert c.get('/api/overview', headers=AUTH).json()['ipas'][0]['channel'] == 'stable'
+        assert c.patch(url, headers=AUTH, json={'channel': 'unassigned'}).status_code == 200

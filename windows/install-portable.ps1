@@ -24,7 +24,7 @@ foreach ($port in @(8765,8766)) {
     }
 }
 $Manifest = Get-Content -LiteralPath $ManifestPath -Raw -Encoding UTF8 | ConvertFrom-Json
-if ($Manifest.schema -ne 1 -or $Manifest.version -ne '2.1.2') {
+if ($Manifest.schema -ne 1 -or $Manifest.version -ne '2.1.3') {
     throw 'Unsupported or unexpected ViePN package manifest.'
 }
 $Entries = @($Manifest.files.PSObject.Properties)

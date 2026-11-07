@@ -289,15 +289,37 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             raise HTTPException(400, detail='Please confirm the destructive action')
         async with manager.lock:
             ids = [r['id'] for r in manager.db.query('SELECT id FROM ipa')] if payload.all else payload.ipa_ids
-            try:
-                # Fail closed: make a verified local snapshot before destructive bulk deletion.
-                if ids:
+            # Fail closed: an inconsistent or unreadable backup must never
+            # silently permit destructive deletion on any device.
+            if ids:
+                try:
                     await asyncio.to_thread(create_backup, cfg.root, manager.db, 'before-bulk-delete')
+                except PermissionError as exc:
+                    raise HTTPException(409, detail=(
+                        'Không thể sao lưu IPA trước khi xóa: Windows đang khóa một file '
+                        'hoặc từ chối quyền đọc/ghi. Đóng ứng dụng dùng IPA, kiểm tra antivirus '
+                        'và thử lại. Chưa xóa dữ liệu nào.'
+                    )) from exc
+                except (OSError, ValueError) as exc:
+                    raise HTTPException(409, detail=(
+                        'Không tạo được bản sao lưu an toàn trước khi xóa. Kiểm tra dung lượng '
+                        'ổ đĩa, quyền thư mục dữ liệu, file IPA/profile còn tồn tại và thử lại. '
+                        'Chưa xóa dữ liệu nào.'
+                    )) from exc
+            try:
                 return manager.delete_ipas(ids, force=payload.force)
             except ValueError as exc:
                 raise HTTPException(409, detail=str(exc)) from exc
+            except PermissionError as exc:
+                raise HTTPException(409, detail=(
+                    'Windows đang khóa file IPA hoặc không đủ quyền sửa thư mục. '
+                    'Hãy đóng ứng dụng đang sử dụng file rồi thử lại.'
+                )) from exc
             except OSError as exc:
-                raise HTTPException(500, detail='Could not remove IPA files') from exc
+                raise HTTPException(500, detail=(
+                    'Lỗi hệ thống file trong khi xóa IPA. Kiểm tra quyền thư mục '
+                    'và dung lượng ổ đĩa Windows.'
+                )) from exc
 
     @app.delete('/api/ipas/{ipa_id}', dependencies=[Depends(auth)])
     async def delete_library_ipa(ipa_id: str, force: bool = False):

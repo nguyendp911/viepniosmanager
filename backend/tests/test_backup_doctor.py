@@ -68,3 +68,41 @@ def test_bulk_delete_snapshots_first(tmp_path):
         backups = list((app.state.manager.cfg.root / "backups").glob("*.zip"))
         assert len(backups) == 1
         assert verify_backup(backups[0])["valid"]
+
+def test_backup_retries_transient_windows_sharing_violation(tmp_path, monkeypatch):
+    from viepn.backups import create_backup, verify_backup
+    app = create_app(config(tmp_path))
+    manager = app.state.manager
+    manager.add_ipa(sample_ipa(tmp_path / "source.ipa"))
+    real_open = Path.open
+    locks = {"count": 0}
+    def locked_once(path, *args, **kwargs):
+        if path.suffix == ".ipa" and path.parent.name == "ipas" and locks["count"] == 0:
+            locks["count"] += 1
+            raise PermissionError(13, "File temporarily locked by Windows")
+        return real_open(path, *args, **kwargs)
+    monkeypatch.setattr(Path, "open", locked_once)
+    result = create_backup(manager.cfg.root, manager.db, "manual")
+    assert locks["count"] == 1
+    assert verify_backup(manager.cfg.root / "backups" / result["name"])["valid"]
+
+
+def test_backup_reports_specific_sanitized_stage_and_keeps_ipa(tmp_path, monkeypatch):
+    from viepn.backups import BackupError
+    app = create_app(config(tmp_path))
+    with TestClient(app) as client:
+        manager = app.state.manager
+        manager.add_ipa(sample_ipa(tmp_path / "source.ipa"))
+        real_open = Path.open
+        def always_locked(path, *args, **kwargs):
+            if path.suffix == ".ipa" and path.parent.name == "ipas":
+                raise PermissionError(13, "User-sensitive absolute path C:/private/AppleID")
+            return real_open(path, *args, **kwargs)
+        monkeypatch.setattr(Path, "open", always_locked)
+        response = client.post("/api/ipas/bulk-delete", headers=AUTH,
+            json={"all": True, "force": True, "confirm": "DELETE ALL IPAS"})
+        assert response.status_code == 409
+        detail = response.json()["detail"]
+        assert "đọc và nén IPA" in detail
+        assert "C:/private" not in detail
+        assert manager.db.query("SELECT id FROM ipa")

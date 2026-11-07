@@ -148,6 +148,21 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         finally:
             target.unlink(missing_ok=True)
 
+    @app.delete('/api/ipas/{ipa_id}', dependencies=[Depends(auth)])
+    async def delete_library_ipa(ipa_id: str):
+        # Synchronize with signing/installation workers before deleting a file.
+        # This only removes local library data; it NEVER uninstalls from iPhone.
+        async with manager.lock:
+            try:
+                result = manager.delete_ipa(ipa_id)
+            except ValueError as exc:
+                raise HTTPException(status_code=409, detail=str(exc)) from exc
+            except OSError as exc:
+                raise HTTPException(status_code=500, detail='Could not delete IPA file on disk') from exc
+        if result is None:
+            raise HTTPException(status_code=404, detail='IPA not found')
+        return result
+
     @app.post('/api/profiles', dependencies=[Depends(auth)])
     async def profile_upload(file: UploadFile = File(...)):
         original_name = Path(file.filename or '').name

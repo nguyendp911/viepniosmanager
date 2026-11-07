@@ -100,6 +100,11 @@
  <button class="button danger" id="notifyDisable" type="button">Tắt</button>
 </div>
 <p class="help">Trên iPhone: mở ứng dụng ntfy → Subscribe → nhập chính xác topic trên → cho phép thông báo. Việc cấu hình chỉ được làm trên Windows <code>http://127.0.0.1:8765</code>, không cho phép qua Tailscale Remote Gateway.</p>
+<h2 style="margin-top:28px">🩺 Connection Doctor</h2><p class="help">Tự kiểm tra backend, gateway, Tailscale, công cụ ký và dung lượng quyền ghi. Không gửi token hoặc thông tin Apple ID.</p><button class="button" id="doctorRun">Kiểm tra kết nối</button><div id="doctorResults" style="margin-top:10px" class="muted">Chưa kiểm tra.</div>
+<h2 style="margin-top:28px">🗄 Sao lưu ViePN</h2><p class="help">Ảnh chụp IPA, profile và SQLite lưu ở thư mục backups trên Windows. Không lưu token, mật khẩu hoặc phiên Apple. Chỉ quản lý/tải bản sao lưu trên localhost; tự tạo trước khi xóa hàng loạt.</p>
+<button class="button primary" id="backupNow">Sao lưu ngay</button><button class="button" id="backupRefresh">Danh sách sao lưu</button>
+<div id="backupList" class="muted" style="margin-top:12px">Chỉ xem tại localhost.</div>
+<p class="help">Khôi phục cần dừng ViePN và xác minh archive trước khi thao tác, không hỗ trợ khôi phục trực tiếp từ kết nối Internet.</p>
 <h2 style="margin-top:28px">Dữ liệu</h2><p class="help">SQLite, IPA và profile được lưu trên Windows tại VIEPN_DATA_DIR. Không tải tài khoản Apple hoặc khóa riêng lên dịch vụ công cộng.</p></section></div></section>
 <div class="footerNote">ViePN iOS Manager · Dữ liệu minh bạch: ứng dụng chưa được cài thật sẽ không được ghi là đã cài. Ký IPA không đồng nghĩa Apple sẽ chấp thuận cài đặt.</div></main></div>
 <div class="login-shade" id="loginShade"><div class="login"><div class="brand" style="padding:0 0 15px"><div class="brandmark">⌁</div><div>ViePN iOS Manager</div></div><h2>Đăng nhập quản lý</h2><p class="help">Dán access token được tạo trong tệp <code>access_token.txt</code> trên Windows. Không chia sẻ token.</p><div class="field"><input type="password" id="token" class="input" autocomplete="off" placeholder="Access token"></div><button class="button primary" id="loginBtn" style="width:100%">Kết nối</button></div></div>
@@ -149,7 +154,7 @@ function cleanDevices(raw){const arr=Array.isArray(raw)?raw:[];return arr.map(x=
 async function load(){try{let d=await api('/overview');state={...state,...d};render();$('serverDot').classList.remove('off');$('serverStatus').textContent='Đã kết nối';}catch(e){$('serverDot').classList.add('off');$('serverStatus').textContent='Chưa xác thực';notify(e.message,true)}}
 async function scan(){try{let d=await api('/devices');state.devices=cleanDevices(d.devices);render();notify(`Đã quét: ${state.devices.length} thiết bị`)}catch(e){notify(e.message,true)}}
 function busy(fn){return async ev=>{const btn=ev.currentTarget;btn.disabled=true;try{await fn(ev)}catch(e){notify(e.message,true)}finally{btn.disabled=false}}}
-document.querySelectorAll('[data-section]').forEach(el=>el.addEventListener('click',()=>{showSection(el.dataset.section);if(el.dataset.section==='free')checkNativeApple().catch(e=>notify(e.message,true));if(el.dataset.section==='settings')loadNotificationSettings();}));document.querySelectorAll('[data-go]').forEach(el=>el.addEventListener('click',()=>showSection(el.dataset.go)));
+document.querySelectorAll('[data-section]').forEach(el=>el.addEventListener('click',()=>{showSection(el.dataset.section);if(el.dataset.section==='free')checkNativeApple().catch(e=>notify(e.message,true));if(el.dataset.section==='settings')loadNotificationSettings();if(el.dataset.section==='settings'){runDoctor().catch(()=>{});refreshBackups().catch(()=>{});}}));document.querySelectorAll('[data-go]').forEach(el=>el.addEventListener('click',()=>showSection(el.dataset.go)));
 $('loginBtn').onclick=busy(async()=>{token=$('token').value.trim();let d=await api('/overview');sessionStorage.setItem('viepn_token',token);$('loginShade').classList.add('hide');state={...state,...d};render();scan()});$('token').addEventListener('keydown',e=>{if(e.key==='Enter')$('loginBtn').click()});
 $('reload').onclick=busy(async()=>{await load();await scan()});$('scanDevices').onclick=busy(scan);
 $('quickUpload').onclick=busy(async()=>{await upload($('quickIpa').files[0],'ipas');notify('Đã thêm IPA');await load()});$('uploadIpa').onclick=busy(async()=>{await upload($('ipaFile').files[0],'ipas');notify('Đã thêm IPA');await load()});$('uploadProfile').onclick=busy(async()=>{await upload($('profileFile').files[0],'profiles');notify('Đã thêm profile');await load()});
@@ -340,6 +345,28 @@ $('notifyCopy').onclick=busy(async()=>{
  if(!topic)throw Error('Không có topic; chỉ xem tại Windows localhost');
  try{await navigator.clipboard.writeText(topic);notify('Đã sao chép topic');}
  catch(e){$('notifyTopic').select();notify('Hãy sao chép topic trong ô này');}
+});
+async function runDoctor(){
+ const data=await api('/doctor');
+ $('doctorResults').innerHTML='<div class="muted">'+data.ok_count+'/'+data.total+' bước sẵn sàng</div>'+data.checks.map(c=>'<div class="tool"><span>'+esc(c.key)+'</span><strong class="'+(c.ok?'ok':'notok')+'">'+esc(c.tip)+'</strong></div>').join('');
+}
+async function refreshBackups(){
+ try{
+  const data=await api('/backups');
+  $('backupList').innerHTML=data.backups.length?data.backups.map(b=>'<div class="tool"><span>'+esc(b.name)+' ('+(b.size_bytes/1048576).toFixed(1)+' MB)</span><button class="button small" data-backup="'+esc(b.name)+'">Tải về</button></div>').join(''):'Chưa có bản sao lưu.';
+ }catch(e){$('backupList').textContent='Chỉ quản lý bản sao lưu trên Windows localhost.';}
+}
+$('doctorRun').onclick=busy(runDoctor);
+$('backupRefresh').onclick=busy(refreshBackups);
+$('backupNow').onclick=busy(async()=>{const r=await post('/backups',{});notify('Đã tạo bản sao lưu: '+r.name);await refreshBackups();});
+$('backupList').addEventListener('click',async event=>{
+ const b=event.target.closest('button[data-backup]');if(!b)return;
+ try{
+  const res=await fetch('/api/backups/'+encodeURIComponent(b.dataset.backup),{headers:{Authorization:'Bearer '+token}});
+  if(!res.ok)throw Error('Không thể tải bản sao lưu, kiểm tra tại localhost');
+  const blob=await res.blob(),url=URL.createObjectURL(blob),a=document.createElement('a');
+  a.href=url;a.download=b.dataset.backup;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),1000);
+ }catch(e){notify(e.message,true);}
 });
 $('logout').onclick=()=>{sessionStorage.removeItem('viepn_token');token='';$('token').value='';$('loginShade').classList.remove('hide')};
 if(token){$('loginShade').classList.add('hide');load().then(scan)}else{$('loginShade').classList.remove('hide')}

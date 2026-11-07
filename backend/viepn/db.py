@@ -60,6 +60,9 @@ class Database:
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
                     kind TEXT NOT NULL, detail TEXT NOT NULL, created_at TEXT NOT NULL
                 );
+                CREATE TABLE IF NOT EXISTS notification_sent (
+                    id TEXT PRIMARY KEY, created_at TEXT NOT NULL
+                );
             ''')
             columns = {row['name'] for row in db.execute('PRAGMA table_info(installations)')}
             if 'signing_mode' not in columns:

@@ -49,6 +49,60 @@ class Manager:
         self.db.event('ipa_uploaded', f"{meta['name']} {meta['bundle_id']}")
         return self.db.one('SELECT * FROM ipa WHERE id=?', (key,))
 
+    def delete_ipa(self, ipa_id: str) -> dict | None:
+        """Remove a library IPA from disk and SQLite, preserving renewal inputs.
+
+        This is invoked while Manager.lock is held by the API, preventing
+        concurrent job execution from reading a file being deleted.
+        """
+        record = self.db.one('SELECT * FROM ipa WHERE id=?', (ipa_id,))
+        if record is None:
+            return None
+
+        # Retain both the original source and the currently installed signed IPA
+        # because automated re-signing or a manual reinstall might need them.
+        installed = self.db.one(
+            'SELECT id FROM installations WHERE source_ipa_id=? OR current_ipa_id=? LIMIT 1',
+            (ipa_id, ipa_id))
+        if installed:
+            raise ValueError(
+                'IPA đang được dùng bởi một ứng dụng đã theo dõi/gia hạn. '
+                'Không thể xóa để tránh mất dữ liệu gia hạn.')
+
+        # Also reject queued/running jobs that have not created installations yet.
+        active_jobs = self.db.query(
+            "SELECT input_json FROM jobs WHERE state IN ('queued','running')")
+        for job in active_jobs:
+            try:
+                params = json.loads(job['input_json'])
+            except (TypeError, ValueError):
+                continue
+            if isinstance(params, dict) and params.get('ipa_id') == ipa_id:
+                raise ValueError('IPA đang được sử dụng trong tác vụ ký/cài. Hãy thử lại khi tác vụ kết thúc.')
+
+        library = (self.cfg.root / 'ipas').resolve()
+        expected = library / f"{record['sha256']}.ipa"
+        path = Path(record['file_path']).resolve()
+        # Never unlink an arbitrary path if a record is accidentally corrupted.
+        if path != expected or path.parent != library:
+            raise ValueError('Đường dẫn file IPA không hợp lệ; thao tác xóa bị từ chối.')
+
+        # Stage file on the same volume: DB failure can restore the original.
+        staged = library / f".delete-{uuid.uuid4().hex}.ipa"
+        had_file = path.is_file()
+        if had_file:
+            os.replace(path, staged)
+        try:
+            self.db.exec('DELETE FROM ipa WHERE id=?', (ipa_id,))
+        except Exception:
+            if had_file:
+                os.replace(staged, path)
+            raise
+        if had_file:
+            staged.unlink(missing_ok=True)
+        self.db.event('ipa_deleted', f"{record['name']} {record['bundle_id']}")
+        return {'deleted': True, 'id': ipa_id, 'file_removed': had_file}
+
     def add_profile(self, temp_path: Path, filename: str) -> dict:
         meta = parse_provision(temp_path.read_bytes())
         checksum = sha256_file(temp_path)

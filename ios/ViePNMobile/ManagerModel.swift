@@ -58,6 +58,29 @@ final class ManagerModel: ObservableObject {
         } catch { self.error = error.localizedDescription }
     }
 
+    func renameIPA(id: String, alias: String) async {
+        await execute { c in
+            let _: IPAActionReply = try await c.patch(
+                "/ipas/\(id)/label", body: RenameBuildBody(alias: alias),
+                as: IPAActionReply.self
+            )
+            return "Đã đặt tên riêng cho bản build"
+        }
+    }
+
+    func deleteIPAs(_ ids: [String], all: Bool, force: Bool) async {
+        await execute { c in
+            let result: DeleteIPAReply = try await c.post(
+                "/ipas/bulk-delete",
+                body: DeleteBuildsBody(
+                    all: all, ipa_ids: all ? [] : ids, force: force,
+                    confirm: all ? "DELETE ALL IPAS" : "DELETE SELECTED IPAS"
+                ), as: DeleteIPAReply.self
+            )
+            return "Đã xóa \(result.deletedIds.count) IPA · hủy theo dõi \(result.trackingRemoved) bản cài"
+        }
+    }
+
     func uploadIPA(_ url: URL) async {
         await execute { c in
             try await c.upload("/ipas", fileURL: url, as: url.lastPathComponent)
@@ -94,4 +117,23 @@ final class ManagerModel: ObservableObject {
             return "Đã gửi \(r.queuedJobIds.count) tác vụ"
         }
     }
+}
+
+private struct RenameBuildBody: Encodable {
+    let alias: String
+}
+private struct IPAActionReply: Decodable {
+    let id: String
+    let alias: String?
+}
+private struct DeleteBuildsBody: Encodable {
+    let all: Bool
+    let ipa_ids: [String]
+    let force: Bool
+    let confirm: String
+}
+private struct DeleteIPAReply: Decodable {
+    let deletedIds: [String]
+    let filesRemoved: Int
+    let trackingRemoved: Int
 }

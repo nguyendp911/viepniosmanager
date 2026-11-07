@@ -27,11 +27,7 @@ powershell -ExecutionPolicy Bypass -File .\windows\setup.ps1
 
 Nếu dự án được giải nén ZIP không có `.git`, tải ZIP của nhánh `main` và chép các thư mục mã nguồn mới vào `C:\ViePN-iOS-Manager`, giữ nguyên `%LOCALAPPDATA%\ViePN-iOS-Manager`.
 
-4. Nhấp đúp file **`Start-ViePN-Remote.bat`** hoặc chạy:
-
-```powershell
-powershell -ExecutionPolicy Bypass -File .\windows\start-remote.ps1
-```
+4. **Nhấp đúp đúng một file `Start-ViePN.bat`** ở thư mục gốc. BAT tự kiểm tra môi trường Python, cài các thư viện còn thiếu, bật API/gateway nội bộ và Tailscale Serve HTTPS.
 
 Script làm những việc sau:
 - Kiểm tra server ViePN (127.0.0.1:8765). Nếu chưa chạy thì khởi động nó ở localhost.
@@ -70,24 +66,36 @@ Kết nối từ xa cho phép **gửi lệnh** và quản lý hồ sơ/IPA. Nó 
 
 Muốn thực sự cài/refresh IPA từ Windows, iPhone cần được kết nối USB hoặc kết nối Wi-Fi pairing mà `pymobiledevice3` nhận diện được. Nếu iPhone đang ở xa, việc cài đặt/refresh có thể thất bại dù HTTPS API vẫn hoạt động. Apple ID miễn phí còn yêu cầu cấp profile hợp lệ 7 ngày; Apple có thể yêu cầu xác minh lại.
 
-Cần Windows bật, Tailscale Windows kết nối và gateway hoạt động. Sau khi restart máy, bạn có thể chạy lại `Start-ViePN-Remote.bat`. Cấu hình Tailscale Serve dùng `--bg` sẽ tiếp tục trên Tailscale, nhưng cả ViePN backend và gateway cũng phải chạy.
+Cần Windows bật, Tailscale Windows kết nối và gateway hoạt động. Sau khi restart máy, bạn có thể chạy lại `Start-ViePN.bat`. Cấu hình Tailscale Serve dùng `--bg` sẽ tiếp tục trên Tailscale, nhưng cả ViePN backend và gateway cũng phải chạy.
 
 ## Tự khởi động kết nối từ xa sau khi đăng nhập Windows
 
-Sau **một lần** thiết lập Tailscale Serve thành công bằng `Start-ViePN-Remote.bat`, có thể tạo tác vụ tự chạy sau mỗi lần đăng nhập Windows:
+Sau **một lần** thiết lập Tailscale Serve thành công bằng `Start-ViePN.bat`, có thể tạo tác vụ tự chạy sau mỗi lần đăng nhập Windows:
 
 ```powershell
 cd C:\ViePN-iOS-Manager
 powershell -ExecutionPolicy Bypass -File .\windows\register-remote-autostart.ps1
 ```
 
-Tác vụ chờ 45 giây để Tailscale Windows kịp kết nối, rồi kiểm tra/khởi chạy backend, gateway và Serve. Đây là tác vụ theo tài khoản người dùng đã đăng nhập: nó không hoạt động nếu máy đã tắt, Windows chưa đăng nhập, máy vào Sleep hoặc tài khoản Tailscale chưa kết nối.
+Tác vụ chạy file `Start-ViePN.bat --auto` để kiểm tra/khởi chạy backend, gateway và Serve sau khi người dùng đăng nhập Windows. Đây là tác vụ theo tài khoản người dùng đã đăng nhập: nó không hoạt động nếu máy đã tắt, Windows chưa đăng nhập, máy vào Sleep hoặc tài khoản Tailscale chưa kết nối.
 
 Để tắt tự khởi động, vào **Task Scheduler** và vô hiệu hóa `ViePN iOS Manager - Private Remote Control`; hoặc chạy:
 
 ```powershell
 Unregister-ScheduledTask -TaskName "ViePN iOS Manager - Private Remote Control" -Confirm:$false
 ```
+
+## Thông báo đẩy khi IPA gần hết hạn hoặc ký/gia hạn thất bại
+
+ViePN tích hợp thông báo qua **ntfy iOS** theo cơ chế *tùy chọn và có sự đồng ý*, vì IPA ký bằng Apple ID miễn phí không mặc định có quyền APNs của Apple. Đây là ứng dụng nhận thông báo **riêng**, không phải thông báo APNs bên trong app ViePN.
+
+- Cài ứng dụng [ntfy](https://ntfy.sh/) trên iPhone, bật thông báo.
+- Trên dashboard chạy trực tiếp ở **http://127.0.0.1:8765** → **Cài đặt** → **Thông báo trên iPhone**, đồng ý sử dụng ntfy.sh và nhấn **Bật thông báo**.
+- Sao chép **topic** riêng trong dashboard, trong ứng dụng ntfy nhấn **Subscribe** và nhập topic đó.
+- Nhấn **Gửi thử** từ Windows. Các thông báo tự động: hết hạn trong 48 giờ, ký/cài/gia hạn thất bại, gia hạn thành công.
+- Có thể nhấn **Tắt** bất kỳ lúc nào. Không cung cấp endpoint cấu hình topic qua Remote Gateway.
+
+ViePN không gửi Apple ID, UDID, tên ứng dụng hay dữ liệu IPA lên ntfy.sh. Dịch vụ ntfy.sh nhìn thấy địa chỉ IP Windows và thông điệp trạng thái, và bất kỳ người nào biết topic cũng có thể đọc thông điệp đó. Giữ topic bí mật và không chia sẻ công khai. Máy Windows phải bật và truy cập Internet được.
 
 ## Kiểm tra và tắt kết nối từ xa
 

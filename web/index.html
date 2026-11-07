@@ -80,6 +80,10 @@
   </div>
 </section>
 <section class="drawer" id="library"><div class="split"><section class="panel"><div class="panel-head"><h2>Thư viện IPA</h2><span class="muted" id="libraryCount">0 mục</span></div>
+<div class="row" style="margin:0 0 14px;gap:10px">
+<input type="search" class="input" id="buildSearch" placeholder="Tìm theo tên, phiên bản, SHA, Bundle ID" aria-label="Tìm bản build" style="flex:2;min-width:180px">
+<select class="input" id="buildChannelFilter" aria-label="Lọc nhóm build" style="flex:1;min-width:140px"><option value="all">Tất cả nhóm</option><option value="stable">Stable</option><option value="test">Test</option><option value="dev">Dev</option><option value="archive">Archive</option><option value="unassigned">Chưa phân loại</option></select>
+</div>
 <div class="actions" style="margin:0 0 14px;gap:9px">
 <button class="button small" id="selectAllIPA" type="button">Chọn tất cả</button>
 <button class="button small danger" id="deleteSelectedIPA" type="button">Xóa đã chọn</button>
@@ -115,6 +119,13 @@ const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&
 const days=s=>s?Math.ceil((new Date(s)-Date.now())/86400000):null;
 const expLabel=s=>{let d=days(s);return d===null?'Không xác định':d<0?`Quá hạn ${Math.abs(d)} ngày`:d===0?'Hết hạn hôm nay':`Còn ${d} ngày`};
 const expClass=s=>{let d=days(s);return d===null?'warn':d<=0?'bad':d<=2?'warn':''};
+const buildChannels=['unassigned','dev','test','stable','archive'];
+const buildSearchState={query:'',channel:'all'};
+const visibleBuilds=()=>state.ipas.filter(x=>{
+ const query=buildSearchState.query.toLocaleLowerCase('vi-VN');
+ return (buildSearchState.channel==='all'||(x.channel||'unassigned')===buildSearchState.channel)&&
+  (!query||[x.alias,x.name,x.bundle_id,x.version,x.id,x.sha256].some(v=>String(v||'').toLocaleLowerCase('vi-VN').includes(query)));
+});
 const buildDate=s=>{if(!s)return '–';const d=new Date(s);return Number.isNaN(d.getTime())?'–':d.toLocaleString('vi-VN',{dateStyle:'short',timeStyle:'short'})};
 const buildLabel=x=>(x.alias||x.name)+' · v'+(x.version||'–')+' · '+(x.id||'').slice(0,8)+' · '+(x.signed_candidate?'Có profile':'Chưa ký');
 
@@ -130,7 +141,7 @@ $('quickInstalls').innerHTML=rows.length?rows.slice(0,6).map(installHtml).join('
 $('renewList').innerHTML=rows.length?rows.map(x=>installHtml(x)+`<div class="row" style="justify-content:flex-end;padding-bottom:15px"><span class="muted">Tự động: ${x.auto_renew?'Bật':'Tắt'}</span><button class="button small" data-renew="${esc(x.id)}">↻ Gia hạn ngay</button></div>`).join(''):'<div class="placeholder">Chưa có ứng dụng để theo dõi.</div>';
 $('recentJobs').innerHTML=state.jobs.length?state.jobs.slice(0,15).map(x=>`<div class="item"><div class="square" style="font-size:16px">${x.state==='succeeded'?'✓':x.state==='failed'?'!':'…'}</div><div class="details"><div class="name">${esc(x.kind)} <span class="expiration ${x.state==='failed'?'bad':''}">${esc(x.state)}</span></div><div class="sub">${esc(x.created_at)} · ${esc(x.output_json||'Đang xử lý').slice(0,270)}</div></div></div>`).join(''):'<div class="placeholder">Chưa có tác vụ nào.</div>';
 $('libraryCount').textContent=state.ipas.length+' mục';
-$('libraryList').innerHTML=state.ipas.length?state.ipas.map((x,i)=>{
+$('libraryList').innerHTML=visibleBuilds().length?visibleBuilds().map((x,i)=>{
  const related=state.installations.filter(inst=>inst.source_ipa_id===x.id||inst.current_ipa_id===x.id);
  return `<div class="item" style="align-items:flex-start">
  <label style="padding-top:15px"><input type="checkbox" class="ipa-select" data-ipa-id="${esc(x.id)}" aria-label="Chọn bản build ${esc(x.name)}"></label>
@@ -144,6 +155,7 @@ $('libraryList').innerHTML=state.ipas.length?state.ipas.map((x,i)=>{
  ${related.length?'<div class="sub" style="color:var(--gold)">Đang theo dõi gia hạn trên '+related.length+' bản cài — xóa cần xác nhận hủy theo dõi</div>':''}
  </div>
  <div class="library-actions"><span class="expiration ${expClass(x.profile_expires)}">${x.signed_candidate?'Có profile':'Chưa ký'}</span>
+ <select class="input" data-channel-ipa="${esc(x.id)}" aria-label="Nhóm build" style="width:110px;padding:6px;font-size:12px">${buildChannels.map(c=>'<option value="'+c+'"'+((x.channel||'unassigned')===c?' selected':'')+'>'+c+'</option>').join('')}</select>
  <button type="button" class="button small" data-rename-ipa="${esc(x.id)}">Đổi tên</button>
  <button type="button" class="button small danger" data-delete-ipa="${esc(x.id)}">🗑 Xóa</button></div></div>`;
 }).join(''):'<div class="placeholder">Nhập IPA để bắt đầu.</div>';
@@ -175,6 +187,18 @@ async function removeIPAs(ids,all=false){
  notify('Đã xóa '+result.deleted_ids.length+' IPA, hủy '+result.tracking_removed+' lịch gia hạn');
  await load();
 }
+$('buildSearch').addEventListener('input',event=>{buildSearchState.query=event.target.value;render();});
+$('buildChannelFilter').addEventListener('change',event=>{buildSearchState.channel=event.target.value;render();});
+$('libraryList').addEventListener('change',async event=>{
+ const select=event.target.closest('select[data-channel-ipa]');if(!select)return;
+ select.disabled=true;
+ try{
+  await api('/ipas/'+encodeURIComponent(select.dataset.channelIpa)+'/channel',{
+   method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({channel:select.value})
+  });notify('Đã cập nhật nhóm build');await load();
+ }catch(e){notify(e.message,true);await load();}
+ finally{select.disabled=false;}
+});
 $('selectAllIPA').onclick=()=>{
  const boxes=[...document.querySelectorAll('.ipa-select')];
  const next=boxes.some(x=>!x.checked);

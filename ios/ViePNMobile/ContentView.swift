@@ -325,6 +325,21 @@ private struct ConnectionView: View {
             }
             StatusView()
             Panel {
+                Label("Thông báo IPA trên iPhone", systemImage: "bell.badge.fill")
+                    .font(.headline).foregroundStyle(Palette.mint)
+                Text("ViePN có thể gửi cảnh báo sắp hết hạn, ký thất bại và gia hạn thành công qua ứng dụng ntfy (cài riêng). Không yêu cầu quyền APNs cho app ViePN ký bằng Apple ID miễn phí.")
+                    .font(.footnote).foregroundStyle(Palette.secondary)
+                Text("Trên máy Windows mở dashboard localhost → Cài đặt → Thông báo trên iPhone → Bật, gửi thử và sao chép topic. Trên iPhone, mở ntfy và Subscribe chính topic đó.")
+                    .font(.footnote).foregroundStyle(Palette.secondary)
+                if let link = URL(string: "https://ntfy.sh/") {
+                    Link(destination: link) {
+                        Label("Tìm hiểu và cài ứng dụng ntfy", systemImage: "arrow.up.right.square")
+                    }.buttonStyle(.bordered)
+                }
+                Text("Chỉ có cảnh báo khi Windows bật, ViePN đang chạy và người dùng đã bật gửi qua ntfy.sh. Dịch vụ ntfy là bên thứ ba.")
+                    .font(.caption).foregroundStyle(.orange)
+            }
+            Panel {
                 Text("Thiết bị nhận diện trên Windows").font(.headline)
                 ForEach(model.devices) { device in
                     Label(device.name, systemImage: "iphone")

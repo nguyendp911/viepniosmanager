@@ -29,6 +29,38 @@ class Manager:
         (config.root / 'incoming').mkdir(exist_ok=True)
         self.db.exec("UPDATE jobs SET state='failed', updated_at=?, output_json=? WHERE state IN ('queued','running')",
                      (utcnow(), json.dumps({'error': 'Interrupted by service restart'})))
+        self.cleanup_pending_ipa_deletes()
+
+    def cleanup_pending_ipa_deletes(self) -> int:
+        """Retry deleting Windows-locked files, never deleting an active IPA.
+
+        Call at startup and after successful deletion; names are untrusted
+        SQLite data and are validated to remain inside the IPA library.
+        """
+        library = (self.cfg.root / 'ipas').resolve()
+        removed = 0
+        for item in self.db.query('SELECT filename,sha256 FROM pending_ipa_deletes'):
+            filename, checksum = item['filename'], item['sha256']
+            expected = {checksum + '.ipa'}
+            if filename.startswith('.delete-') and filename.endswith('.ipa'):
+                expected.add(filename)
+            if (filename not in expected or not filename.isascii() or
+                    len(checksum) != 64 or any(c not in '0123456789abcdef' for c in checksum)):
+                continue
+            # An IPA re-imported in the meantime must NEVER be deleted.
+            if self.db.one('SELECT id FROM ipa WHERE sha256=?', (checksum,)):
+                self.db.exec('DELETE FROM pending_ipa_deletes WHERE filename=?', (filename,))
+                continue
+            path = library / filename
+            if path.resolve().parent != library:
+                continue
+            try:
+                path.unlink(missing_ok=True)
+            except OSError:
+                continue
+            self.db.exec('DELETE FROM pending_ipa_deletes WHERE filename=?', (filename,))
+            removed += 1
+        return removed
 
     def add_ipa(self, temp_path: Path) -> dict:
         meta = inspect_ipa(temp_path)
@@ -138,35 +170,63 @@ class Manager:
                 raise ValueError('Đường dẫn IPA không hợp lệ. Đã hủy thao tác xóa.')
             validated.append((record, target))
 
-        moved: list[tuple[Path, Path]] = []
+        moved: list[tuple[Path, Path, str]] = []
+        locked: list[tuple[str, str]] = []
         try:
             for record, target in validated:
                 if target.is_file():
                     staged = library / f".delete-{uuid.uuid4().hex}.ipa"
-                    os.replace(target, staged)
-                    moved.append((target, staged))
+                    try:
+                        os.replace(target, staged)
+                        moved.append((target, staged, record['sha256']))
+                    except PermissionError:
+                        # Windows may keep a signed IPA open while a scanner
+                        # or another process inspects it. Remove it from the
+                        # library now, and retry disk cleanup after unlocking.
+                        locked.append((target.name, record['sha256']))
 
-            # Commit selected rows and tracking in one SQLite transaction.
+            # Commit selected rows, detached tracking and pending cleanup
+            # together: a DB failure restores every successfully staged IPA.
             with self.db.connect() as db:
                 if linked:
                     db.executemany('DELETE FROM installations WHERE id=?',
                                    [(item['id'],) for item in linked])
                 db.executemany('DELETE FROM ipa WHERE id=?',
                                [(item,) for item in selected])
+                if locked:
+                    db.executemany(
+                        'INSERT OR REPLACE INTO pending_ipa_deletes(filename,sha256,created_at) VALUES (?,?,?)',
+                        [(filename, checksum, utcnow()) for filename, checksum in locked],
+                    )
         except Exception:
-            for target, staged in reversed(moved):
+            for target, staged, _ in reversed(moved):
                 if staged.exists():
                     os.replace(staged, target)
             raise
 
-        for _, staged in moved:
-            staged.unlink(missing_ok=True)
+        removed = 0
+        for _, staged, checksum in moved:
+            try:
+                staged.unlink(missing_ok=True)
+                removed += 1
+            except OSError:
+                # The DB is already committed. Keep a deferred deletion entry
+                # rather than returning an erroneous HTTP 500 after success.
+                self.db.exec(
+                    'INSERT OR REPLACE INTO pending_ipa_deletes(filename,sha256,created_at) VALUES (?,?,?)',
+                    (staged.name, checksum, utcnow()),
+                )
+        # Files locked at the start remain in the library folder until they
+        # can be removed, but are no longer visible/selectable in ViePN.
+        pending = len(locked) + len(moved) - removed
         self.db.event('ipas_deleted',
-                      f"{len(records)} IPA removed; {len(linked)} renewal records removed")
+                      f"{len(records)} IPA removed; {len(linked)} renewal records removed; "
+                      f"{pending} physical deletions deferred")
         return {
             'deleted_ids': [r['id'] for r in records],
-            'files_removed': len(moved),
+            'files_removed': removed,
             'tracking_removed': len(linked),
+            'pending_file_deletes': pending,
         }
 
     def add_profile(self, temp_path: Path, filename: str) -> dict:

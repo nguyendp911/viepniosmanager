@@ -208,7 +208,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
 
     @app.post('/api/apple/refresh-all', dependencies=[Depends(auth)])
     async def apple_refresh_all():
-        ids = manager.db.query('SELECT id FROM installations WHERE auto_renew=2')
+        ids = manager.db.query('SELECT id FROM installations WHERE signing_mode='apple_personal'')
         return {'queued_job_ids': [manager.submit('renew', {'installation_id': row['id']})
                                    for row in ids]}
 
@@ -233,21 +233,10 @@ def create_app(settings: Settings | None = None) -> FastAPI:
 
     @app.get('/api/free/status', dependencies=[Depends(auth)])
     def free_status():
-        # Apple Account authentication/signing is delegated to official SideStore.
-        # ViePN intentionally never accepts Apple Account passwords or 2FA tokens.
-        return {
-            'mode': 'sidestore_external',
-            'requires_p12': False,
-            'apple_credentials_stored': False,
-            'lan_enabled': cfg.host not in ('127.0.0.1', 'localhost', '::1'),
-            'share_ttl_seconds': ipa_shares.ttl_seconds,
-            'urls': {
-                'prerequisites': 'https://docs.sidestore.io/docs/installation/prerequisites',
-                'installation': 'https://docs.sidestore.io/docs/installation/install',
-                'pairing': 'https://docs.sidestore.io/docs/advanced/pairing-file'
-            },
-            'note': 'SideStore, not ViePN, signs and refreshes apps. Background refresh is not guaranteed.'
-        }
+        # Backward compatibility: the signing backend is now native to ViePN.
+        return {**apple_account_status(), 'mode': 'native_apple',
+                'lan_enabled': cfg.host not in ('127.0.0.1', 'localhost', '::1'),
+                'share_ttl_seconds': ipa_shares.ttl_seconds}
 
     @app.post('/api/free/share/{ipa_id}', dependencies=[Depends(auth)])
     def create_free_share(ipa_id: str):

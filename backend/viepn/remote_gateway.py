@@ -22,6 +22,7 @@ _RULES = (
     ("GET", re.compile(r"^/$")),
     ("GET", re.compile(r"^/api/health$")),
     ("GET", re.compile(r"^/api/overview$")),
+    ("GET", re.compile(r"^/api/doctor$")),
     ("GET", re.compile(r"^/api/devices$")),
     ("GET", re.compile(r"^/api/device/[A-Za-z0-9-]{8,128}/apps$")),
     ("GET", re.compile(r"^/api/apple/status$")),
@@ -29,6 +30,7 @@ _RULES = (
     ("POST", re.compile(r"^/api/ipas$")),
     ("POST", re.compile(r"^/api/ipas/bulk-delete$")),
     ("PATCH", re.compile(r"^/api/ipas/[A-Za-z0-9]{1,64}/label$")),
+    ("PATCH", re.compile(r"^/api/ipas/[A-Za-z0-9]{1,64}/channel$")),
     ("DELETE", re.compile(r"^/api/ipas/[A-Za-z0-9]{1,64}$")),
     ("POST", re.compile(r"^/api/profiles$")),
     ("POST", re.compile(r"^/api/install$")),
@@ -36,6 +38,7 @@ _RULES = (
     ("POST", re.compile(r"^/api/apple/sign$")),
     ("POST", re.compile(r"^/api/apple/install$")),
     ("POST", re.compile(r"^/api/apple/refresh-all$")),
+    ("POST", re.compile(r"^/api/jobs/[A-Za-z0-9-]{1,64}/retry$")),
     ("POST", re.compile(r"^/api/renew$")),
     ("POST", re.compile(r"^/api/renew/check$")),
 )

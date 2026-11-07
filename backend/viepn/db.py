@@ -63,6 +63,11 @@ class Database:
                 CREATE TABLE IF NOT EXISTS notification_sent (
                     id TEXT PRIMARY KEY, created_at TEXT NOT NULL
                 );
+                CREATE TABLE IF NOT EXISTS pending_ipa_deletes (
+                    filename TEXT PRIMARY KEY,
+                    sha256 TEXT NOT NULL,
+                    created_at TEXT NOT NULL
+                );
             ''')
             ipa_columns = {row['name'] for row in db.execute('PRAGMA table_info(ipa)')}
             if 'alias' not in ipa_columns:

@@ -98,7 +98,7 @@ final class ManagerModel: ObservableObject {
             diagnostic = try await client.get("/doctor", as: DoctorReport.self)
             error = nil
         } catch {
-            error = error.localizedDescription
+            self.error = error.localizedDescription
         }
     }
 

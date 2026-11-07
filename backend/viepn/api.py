@@ -14,6 +14,7 @@ from pydantic import BaseModel, Field
 from .config import Settings, load_settings
 from .free_sign import ShareStore
 from .service import Manager
+from .native_sign import status as apple_account_status
 from .tools import ExternalToolError, check_udid, connected_devices, installed_apps
 
 WEB_ROOT = Path(__file__).resolve().parents[2] / 'web'
@@ -33,6 +34,17 @@ class SignPayload(BaseModel):
     profile_id: str | None = None
 
 
+class AppleInstallPayload(BaseModel):
+    ipa_id: str
+    udid: str
+    auto_renew: bool = True
+
+
+class AppleSignPayload(BaseModel):
+    ipa_id: str
+    udid: str
+
+
 class RenewPayload(BaseModel):
     installation_id: str
 
@@ -48,7 +60,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         yield
         await manager.stop()
 
-    app = FastAPI(title='ViePN iOS Manager', version='1.1.0', lifespan=lifespan,
+    app = FastAPI(title='ViePN iOS Manager', version='1.2.0', lifespan=lifespan,
                   docs_url=None, redoc_url=None, openapi_url=None)
     app.state.manager = manager
 
@@ -64,7 +76,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
 
     @app.get('/api/health')
     def health():
-        return {'ok': True, 'service': 'ViePN iOS Manager', 'version': '1.1.0'}
+        return {'ok': True, 'service': 'ViePN iOS Manager', 'version': '1.2.0'}
 
     @app.get('/api/overview', dependencies=[Depends(auth)])
     def overview():
@@ -168,6 +180,37 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         if not manager.db.one('SELECT id FROM ipa WHERE id=?', (payload.ipa_id,)):
             raise HTTPException(404, detail='Unknown IPA')
         return {'job_id': manager.submit('sign', payload.model_dump())}
+
+    @app.get('/api/apple/status', dependencies=[Depends(auth)])
+    async def apple_status():
+        # Never return password, two-factor challenge, account session or token.
+        return await asyncio.to_thread(apple_account_status)
+
+    @app.post('/api/apple/sign', dependencies=[Depends(auth)])
+    async def apple_sign(payload: AppleSignPayload):
+        try:
+            check_udid(payload.udid)
+        except ValueError as exc:
+            raise HTTPException(400, detail=str(exc))
+        if not manager.db.one('SELECT id FROM ipa WHERE id=?', (payload.ipa_id,)):
+            raise HTTPException(404, detail='IPA not found')
+        return {'job_id': manager.submit('apple_sign', payload.model_dump())}
+
+    @app.post('/api/apple/install', dependencies=[Depends(auth)])
+    async def apple_install(payload: AppleInstallPayload):
+        try:
+            check_udid(payload.udid)
+        except ValueError as exc:
+            raise HTTPException(400, detail=str(exc))
+        if not manager.db.one('SELECT id FROM ipa WHERE id=?', (payload.ipa_id,)):
+            raise HTTPException(404, detail='IPA not found')
+        return {'job_id': manager.submit('apple_install', payload.model_dump())}
+
+    @app.post('/api/apple/refresh-all', dependencies=[Depends(auth)])
+    async def apple_refresh_all():
+        ids = manager.db.query('SELECT id FROM installations WHERE auto_renew=2')
+        return {'queued_job_ids': [manager.submit('renew', {'installation_id': row['id']})
+                                   for row in ids]}
 
     @app.post('/api/renew', dependencies=[Depends(auth)])
     async def renew(payload: RenewPayload):

@@ -2,7 +2,7 @@
 
 No SideStore, AltStore, or iLoader runtime. Apple GSA/Developer protocol code
 is embedded in viepn.applekit with its original MIT license and attribution.
-Authentication runs locally in PowerShell, NEVER in the web dashboard.
+Authentication runs locally. Browser login is available only on loopback Windows\nwith a separate bearer-token authenticated API; PowerShell remains supported.
 
 Apple does not publish/support the Personal Team web protocol. Actual login,
 profile issuance and device installation MUST be verified on physical hardware.
@@ -85,6 +85,28 @@ def status() -> dict:
         "apple_protocol_supported": False,  # private, subject to change
         "refresh_requires_reachable_iphone": True,
     }
+
+
+def configure_anisette(server: str | None, allow_community: bool = False) -> None:
+    """Save explicit user-selected anisette configuration for the Windows user."""
+    from urllib.parse import urlsplit
+
+    if server:
+        parsed = urlsplit(server.strip())
+        if (parsed.scheme != 'https' or not parsed.hostname
+                or parsed.username or parsed.password or parsed.fragment):
+            raise NativeSigningError('Anisette server must be a valid HTTPS URL')
+        profile = {"server": server.strip().rstrip('/'), "allow_community": False}
+    elif allow_community:
+        profile = {"server": "", "allow_community": True}
+        if not os.environ.get("VIEPN_ANISETTE_SERVER"):
+            os.environ.pop("IPASIDE_ANISETTE_SERVER", None)
+    else:
+        raise NativeSigningError('Select an HTTPS anisette server or consent to community providers')
+
+    path = _consent_file()
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(profile), encoding='utf-8')
 
 
 def select_anisette_interactive() -> None:

@@ -12,6 +12,7 @@ from fastapi.responses import FileResponse
 from pydantic import BaseModel, Field
 
 from .config import Settings, load_settings
+from .free_sign import ShareStore
 from .service import Manager
 from .tools import ExternalToolError, check_udid, connected_devices, installed_apps
 
@@ -39,6 +40,7 @@ class RenewPayload(BaseModel):
 def create_app(settings: Settings | None = None) -> FastAPI:
     cfg = settings or load_settings()
     manager = Manager(cfg)
+    ipa_shares = ShareStore(ttl_seconds=600)
 
     @asynccontextmanager
     async def lifespan(_: FastAPI):
@@ -46,7 +48,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         yield
         await manager.stop()
 
-    app = FastAPI(title='ViePN iOS Manager', version='1.0.0', lifespan=lifespan,
+    app = FastAPI(title='ViePN iOS Manager', version='1.1.0', lifespan=lifespan,
                   docs_url=None, redoc_url=None, openapi_url=None)
     app.state.manager = manager
 
@@ -62,7 +64,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
 
     @app.get('/api/health')
     def health():
-        return {'ok': True, 'service': 'ViePN iOS Manager', 'version': '1.0.0'}
+        return {'ok': True, 'service': 'ViePN iOS Manager', 'version': '1.1.0'}
 
     @app.get('/api/overview', dependencies=[Depends(auth)])
     def overview():
@@ -185,6 +187,56 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             raise HTTPException(404, detail='IPA not found')
         return FileResponse(record['file_path'], filename=record['bundle_id'] + '.ipa',
                             media_type='application/octet-stream')
+
+    @app.get('/api/free/status', dependencies=[Depends(auth)])
+    def free_status():
+        # Apple Account authentication/signing is delegated to official SideStore.
+        # ViePN intentionally never accepts Apple Account passwords or 2FA tokens.
+        return {
+            'mode': 'sidestore_external',
+            'requires_p12': False,
+            'apple_credentials_stored': False,
+            'lan_enabled': cfg.host not in ('127.0.0.1', 'localhost', '::1'),
+            'share_ttl_seconds': ipa_shares.ttl_seconds,
+            'urls': {
+                'prerequisites': 'https://docs.sidestore.io/docs/installation/prerequisites',
+                'installation': 'https://docs.sidestore.io/docs/installation/install',
+                'pairing': 'https://docs.sidestore.io/docs/advanced/pairing-file'
+            },
+            'note': 'SideStore, not ViePN, signs and refreshes apps. Background refresh is not guaranteed.'
+        }
+
+    @app.post('/api/free/share/{ipa_id}', dependencies=[Depends(auth)])
+    def create_free_share(ipa_id: str):
+        # Never place the dashboard bearer token in a download URL.
+        record = manager.db.one('SELECT * FROM ipa WHERE id=?', (ipa_id,))
+        if not record:
+            raise HTTPException(status_code=404, detail='IPA not found')
+        try:
+            secret, seconds = ipa_shares.create(record['file_path'], record['bundle_id'])
+        except ValueError as exc:
+            raise HTTPException(status_code=404, detail=str(exc))
+        return {
+            'path': '/api/free/download/' + secret,
+            'expires_in_seconds': seconds,
+            'max_downloads': 1,
+            'lan_enabled': cfg.host not in ('127.0.0.1', 'localhost', '::1')
+        }
+
+    @app.get('/api/free/download/{share_token}')
+    def download_shared_ipa(share_token: str):
+        # Public-by-capability endpoint; token is 256-bit random, time-limited,
+        # and single use. It grants access to this IPA ONLY, not to dashboard API.
+        shared = ipa_shares.take(share_token)
+        if shared is None:
+            raise HTTPException(status_code=404, detail='Share expired or already used')
+        path, bundle = shared
+        return FileResponse(
+            path, filename=bundle + '.ipa', media_type='application/octet-stream',
+            headers={'Cache-Control': 'no-store',
+                     'Referrer-Policy': 'no-referrer',
+                     'X-Content-Type-Options': 'nosniff'}
+        )
 
     return app
 

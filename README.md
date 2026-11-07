@@ -1,8 +1,24 @@
-# ViePN iOS Manager 2.1 — Apple ID miễn phí, ký trực tiếp trên Windows
+# ViePN iOS Manager 2.1.2 — Apple ID miễn phí, ký trực tiếp trên Windows
 
 ViePN là công cụ Windows + web dashboard để **đọc IPA, kết nối iPhone, xác thực Apple ID miễn phí (2FA), xin provisioning profile, ký IPA, cài lên iPhone và gia hạn trước khi hết 7 ngày**. Không cần cài ứng dụng SideStore/AltStore/iLoader.
 
 **Quan trọng:** Mã nguồn và API đã được triển khai, nhưng luồng Apple ID và ký/cài IPA **chưa được xác nhận thành công trên iPhone của bạn**. Apple dùng giao thức không công khai cho Personal Team, có thể thay đổi hoặc chặn; không nên coi đây là cam kết hoạt động liên tục. Xem [tài liệu kỹ thuật, bảo mật và giới hạn](docs/APPLE_ID_NATIVE.md).
+
+## Tự cập nhật bằng một file BAT (Windows + iOS IPA)
+
+Từ **ViePN 2.1.2**, nhấp đúp **`C:\ViePN-iOS-Manager\Update-ViePN.bat`**:
+
+1. Truy vấn **GitHub Releases → latest stable** của `nguyendp911/viepniosmanager`, không tải nhánh main chưa kiểm thử.
+2. Tự tải `ViePN-Windows-Portable-VERSION.zip` và `.sha256`, kèm `ViePNMobile-VERSION-UNSIGNED.ipa` và `.sha256`.
+3. Kiểm tra **cả hai SHA-256**, giải nén ZIP vào thư mục tạm và kiểm tra manifest/version. Nếu lỗi, **không sửa nguồn ViePN đang dùng**.
+4. Nếu backend/gateway đang chạy, chỉ dừng các tiến trình Python nhận diện là ViePN trong thư mục cài đặt sau khi kiểm tra **không có tác vụ ký/cài/gia hạn hoạt động**. Nếu tiến trình không xác định được hoặc không đọc được danh sách tác vụ, hủy cập nhật thay vì dừng nhầm.
+5. Gọi bộ cài có kiểm tra checksum từng file và sao lưu mã nguồn cũ vào `C:\ViePN-iOS-Manager\code-backups` trước khi ghi đè mã nguồn.
+6. Lưu IPA unsigned có tên phiên bản trong **`C:\ViePN-iOS-Manager\IPA\ViePNMobile-VERSION-UNSIGNED.ipa`**. Không xóa IPA cũ hay dữ liệu trong `%LOCALAPPDATA%\ViePN-iOS-Manager`.
+7. Chạy lại `Start-ViePN.bat` sau khi cập nhật. IPA unsigned **cần ký trước khi cài trên iPhone**.
+
+**Lần đầu:** nếu bản ViePN hiện tại chưa có `Update-ViePN.bat`, hãy tải và giải nén bộ Windows Portable 2.1.2, chạy `Install-ViePN.bat` **một lần** để nhận nút cập nhật tự động. Từ những lần sau chỉ cần một file BAT.
+
+Không cần mở cổng mạng hoặc bật Tailscale Funnel; updater chỉ tải bản phát hành từ trang GitHub chính thức. Không tắt Defender hoặc bypass kiểm tra checksum.
 
 ## Cài đặt Windows (Python 3.14)
 

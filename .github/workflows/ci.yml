@@ -39,6 +39,23 @@ jobs:
       - name: Validate unified BAT launcher without starting services
         shell: cmd
         run: Start-ViePN.bat --self-test
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Windows portable install smoke test
+        shell: pwsh
+        run: |
+          python windows/build_portable.py
+          $package = Join-Path $env:RUNNER_TEMP 'ViePN-Package'
+          $destination = Join-Path $env:RUNNER_TEMP 'ViePN-Installed'
+          Expand-Archive -LiteralPath 'dist/ViePN-Windows-Portable.zip' -DestinationPath $package -Force
+          & (Join-Path $package 'windows/install-portable.ps1') -Source $package -Destination $destination
+          if (-not (Test-Path (Join-Path $destination 'Start-ViePN.bat'))) {
+            throw 'Portable install did not deliver Start-ViePN.bat'
+          }
+          if (-not (Test-Path (Join-Path $destination 'backend/viepn/api.py'))) {
+            throw 'Portable install did not deliver backend'
+          }
       - name: Parse PowerShell launcher scripts
         shell: pwsh
         run: |

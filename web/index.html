@@ -79,7 +79,14 @@
     </div>
   </div>
 </section>
-<section class="drawer" id="library"><div class="split"><section class="panel"><div class="panel-head"><h2>Thư viện IPA</h2><span class="muted" id="libraryCount">0 mục</span></div><div id="libraryList"></div></section><section class="panel"><h2>Thêm ứng dụng</h2><div class="field"><label class="label">File IPA</label><input class="input" id="ipaFile" type="file" accept=".ipa"></div><button class="button primary" id="uploadIpa">↑ &nbsp; Nhập thư viện</button><hr style="border:0;border-top:1px solid var(--stroke);margin:23px 0"><h2>Ký và cài lên iPhone</h2><div class="field"><label class="label">Chọn IPA</label><select id="ipaChoice" class="input"></select></div><div class="field"><label class="label">Thiết bị</label><select id="deviceChoice" class="input"></select></div><div class="field"><label class="label">Provisioning profile (để trống: tự chọn mới nhất phù hợp)</label><select id="profileChoice" class="input"></select></div><div class="field"><label class="row"><input type="checkbox" id="resignCheck">Ký lại IPA trước khi cài</label></div><div class="field"><label class="row"><input type="checkbox" id="renewCheck" checked>Theo dõi và thử gia hạn trước hạn</label></div><div class="actions"><button class="button primary" id="installBtn">↧ Cài ứng dụng</button><button class="button" id="signBtn">✓ Chỉ ký IPA</button></div><p class="help">Nếu IPA đã được ký hợp lệ, có thể bỏ chọn ký lại. Tất cả tác vụ sẽ trả về trạng thái thực tế trong Nhật ký.</p></section></div></section>
+<section class="drawer" id="library"><div class="split"><section class="panel"><div class="panel-head"><h2>Thư viện IPA</h2><span class="muted" id="libraryCount">0 mục</span></div>
+<div class="actions" style="margin:0 0 14px;gap:9px">
+<button class="button small" id="selectAllIPA" type="button">Chọn tất cả</button>
+<button class="button small danger" id="deleteSelectedIPA" type="button">Xóa đã chọn</button>
+<button class="button small danger" id="deleteAllIPA" type="button">Xóa toàn bộ IPA</button>
+</div>
+<p class="help">Mỗi bản build có mã SHA, phiên bản, ngày nhập và hạn profile riêng. Bạn có thể đặt tên riêng. Xóa IPA đang theo dõi gia hạn sẽ yêu cầu xác nhận hủy theo dõi; không gỡ ứng dụng trên iPhone.</p>
+<div id="libraryList"></div></section><section class="panel"><h2>Thêm ứng dụng</h2><div class="field"><label class="label">File IPA</label><input class="input" id="ipaFile" type="file" accept=".ipa"></div><button class="button primary" id="uploadIpa">↑ &nbsp; Nhập thư viện</button><hr style="border:0;border-top:1px solid var(--stroke);margin:23px 0"><h2>Ký và cài lên iPhone</h2><div class="field"><label class="label">Chọn IPA</label><select id="ipaChoice" class="input"></select></div><div class="field"><label class="label">Thiết bị</label><select id="deviceChoice" class="input"></select></div><div class="field"><label class="label">Provisioning profile (để trống: tự chọn mới nhất phù hợp)</label><select id="profileChoice" class="input"></select></div><div class="field"><label class="row"><input type="checkbox" id="resignCheck">Ký lại IPA trước khi cài</label></div><div class="field"><label class="row"><input type="checkbox" id="renewCheck" checked>Theo dõi và thử gia hạn trước hạn</label></div><div class="actions"><button class="button primary" id="installBtn">↧ Cài ứng dụng</button><button class="button" id="signBtn">✓ Chỉ ký IPA</button></div><p class="help">Nếu IPA đã được ký hợp lệ, có thể bỏ chọn ký lại. Tất cả tác vụ sẽ trả về trạng thái thực tế trong Nhật ký.</p></section></div></section>
 <section class="drawer" id="devices"><section class="panel"><div class="panel-head"><h2>iPhone / iPad của tôi</h2><button class="button small" id="scanDevices">Quét thiết bị</button></div><div id="deviceList" class="placeholder">Nhấn Quét thiết bị</div><div class="warnbox">Trên Windows, cần Apple Mobile Device Service, ghép đôi USB và xác nhận Tin cậy trên iPhone. Nếu không thấy thiết bị Wi-Fi, kiểm tra dịch vụ Apple và cấu hình ghép đôi.</div></section></section>
 <section class="drawer" id="renewals"><div class="split"><section class="panel"><div class="panel-head"><h2>Lịch chữ ký và gia hạn</h2><button class="button small" id="scanRenew">Kiểm tra ngay</button></div><div id="renewList"></div></section><section class="panel"><h2>Chứng chỉ cấp phép</h2><div class="field"><label class="label">Nhập provisioning profile mới (.mobileprovision)</label><input class="input" id="profileFile" type="file" accept=".mobileprovision"></div><button class="button primary" id="uploadProfile">↑ Nhập profile</button><p class="help">Profile mới phải bao gồm UDID thiết bị và phù hợp với bundle ID. P12 và zsign được cấu hình cục bộ trên Windows.</p><div id="profileList"></div><div class="warnbox">Gia hạn 7 ngày không thể tự tạo profile mới nếu thiếu quy trình xác thực Apple. SideStore trên iPhone hỗ trợ làm mới độc lập; hệ thống Windows này tự động thử ký/cài khi đã có profile mới hợp lệ.</div></section></div></section>
 <section class="drawer" id="settings"><div class="split"><section class="panel"><h2>Công cụ hệ thống</h2><div class="tool"><span>pymobiledevice3</span><strong id="statusPM3">–</strong></div><div class="tool"><span>zsign</span><strong id="statusZsign">–</strong></div><div class="tool"><span>Tài liệu ký P12</span><strong id="statusP12">–</strong></div><div class="tool"><span>Gia hạn trước</span><strong id="statusHours">48 giờ</strong></div><p class="help">Các công cụ phải được cài đặt trên Windows theo README, riêng thông tin P12 và mật khẩu không bao giờ được gửi về giao diện.</p></section><section class="panel"><h2>Bảo mật kết nối</h2><p class="help">Token dashboard lưu trong sessionStorage. Để điều khiển ViePN từ iPhone qua Internet, dùng <b>Tailscale Serve (VPN riêng + HTTPS)</b>, không mở cổng 8765 công khai và không dùng Tailscale Funnel.</p><div class="warnbox">Điều khiển từ xa không cho phép nhập mật khẩu, mã 2FA hoặc đổi phiên Apple ID. Các thao tác đó chỉ thực hiện trên Windows localhost.</div><p class="help">Trên Windows, nhấp đúp <code>Start-ViePN.bat</code> — một file khởi chạy tất cả: backend, gateway, Tailscale Serve và dịch vụ gửi cảnh báo. Sau đó dùng URL HTTPS dạng <code>https://may-tinh.tailnet.ts.net</code>. Máy tính cần bật và kết nối Tailscale.</p><a href="https://github.com/nguyendp911/viepniosmanager/blob/main/docs/REMOTE_ACCESS.md" target="_blank" rel="noopener noreferrer" class="button small" style="display:inline-block;text-decoration:none;margin-bottom:18px">Hướng dẫn kết nối từ xa</a><button class="button" id="logout">Đăng xuất dashboard</button><h2 style="margin-top:30px">🔔 Thông báo trên iPhone</h2>
@@ -103,6 +110,9 @@ const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&
 const days=s=>s?Math.ceil((new Date(s)-Date.now())/86400000):null;
 const expLabel=s=>{let d=days(s);return d===null?'Không xác định':d<0?`Quá hạn ${Math.abs(d)} ngày`:d===0?'Hết hạn hôm nay':`Còn ${d} ngày`};
 const expClass=s=>{let d=days(s);return d===null?'warn':d<=0?'bad':d<=2?'warn':''};
+const buildDate=s=>{if(!s)return '–';const d=new Date(s);return Number.isNaN(d.getTime())?'–':d.toLocaleString('vi-VN',{dateStyle:'short',timeStyle:'short'})};
+const buildLabel=x=>(x.alias||x.name)+' · v'+(x.version||'–')+' · '+(x.id||'').slice(0,8)+' · '+(x.signed_candidate?'Có profile':'Chưa ký');
+
 const notify=(message,error=false)=>{let n=document.createElement('div');n.className='toast'+(error?' error':'');n.textContent=message;document.body.appendChild(n);setTimeout(()=>n.remove(),5200)};
 async function api(path,options={}){let headers={Authorization:'Bearer '+token,...(options.headers||{})};const response=await fetch('/api'+path,{...options,headers});let result=await response.json().catch(()=>({detail:'Lỗi phản hồi từ máy chủ'}));if(!response.ok){if(response.status===401){sessionStorage.removeItem('viepn_token');$('loginShade').classList.remove('hide')}throw new Error(typeof result.detail==='string'?result.detail:JSON.stringify(result.detail))}return result}
 const post=(path,data)=>api(path,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(data)});
@@ -114,9 +124,26 @@ const installHtml=x=>`<div class="item"><div class="square">▣</div><div class=
 $('quickInstalls').innerHTML=rows.length?rows.slice(0,6).map(installHtml).join(''):'<div class="placeholder">Chưa có bản cài đặt nào được ghi nhận.</div>';
 $('renewList').innerHTML=rows.length?rows.map(x=>installHtml(x)+`<div class="row" style="justify-content:flex-end;padding-bottom:15px"><span class="muted">Tự động: ${x.auto_renew?'Bật':'Tắt'}</span><button class="button small" data-renew="${esc(x.id)}">↻ Gia hạn ngay</button></div>`).join(''):'<div class="placeholder">Chưa có ứng dụng để theo dõi.</div>';
 $('recentJobs').innerHTML=state.jobs.length?state.jobs.slice(0,15).map(x=>`<div class="item"><div class="square" style="font-size:16px">${x.state==='succeeded'?'✓':x.state==='failed'?'!':'…'}</div><div class="details"><div class="name">${esc(x.kind)} <span class="expiration ${x.state==='failed'?'bad':''}">${esc(x.state)}</span></div><div class="sub">${esc(x.created_at)} · ${esc(x.output_json||'Đang xử lý').slice(0,270)}</div></div></div>`).join(''):'<div class="placeholder">Chưa có tác vụ nào.</div>';
-$('libraryCount').textContent=state.ipas.length+' mục';$('libraryList').innerHTML=state.ipas.length?state.ipas.map(x=>`<div class="item"><div class="square">◈</div><div class="details"><div class="name">${esc(x.name)}</div><div class="sub">${esc(x.bundle_id)} · ${esc(x.version||'–')} · ${(x.size_bytes/1048576).toFixed(1)} MB</div><div class="sub">${x.signed_candidate?`Profile: ${expLabel(x.profile_expires)}`:'IPA chưa xác định chữ ký'}</div></div><div class="library-actions"><span class="expiration ${expClass(x.profile_expires)}">${x.signed_candidate?'Có profile':'Chưa ký'}</span><button type="button" class="button small danger" data-delete-ipa="${esc(x.id)}" aria-label="Xóa file IPA ${esc(x.name)}" title="Xóa file IPA khỏi thư viện Windows">🗑 Xóa</button></div></div>`).join(''):'<div class="placeholder">Nhập IPA để bắt đầu.</div>';
+$('libraryCount').textContent=state.ipas.length+' mục';
+$('libraryList').innerHTML=state.ipas.length?state.ipas.map((x,i)=>{
+ const related=state.installations.filter(inst=>inst.source_ipa_id===x.id||inst.current_ipa_id===x.id);
+ return `<div class="item" style="align-items:flex-start">
+ <label style="padding-top:15px"><input type="checkbox" class="ipa-select" data-ipa-id="${esc(x.id)}" aria-label="Chọn bản build ${esc(x.name)}"></label>
+ <div class="square">◈</div>
+ <div class="details">
+ <div class="name">${esc(x.alias||x.name)} <span class="muted">#${i+1}</span></div>
+ <div class="sub">${esc(x.name)} · v${esc(x.version||'–')} · ${(x.size_bytes/1048576).toFixed(1)} MB</div>
+ <div class="sub code">${esc(x.bundle_id)} · SHA ${esc(x.id.slice(0,12))}</div>
+ <div class="sub">Ngày nhập: ${buildDate(x.created_at)}</div>
+ <div class="sub">${x.signed_candidate?'Profile: '+expLabel(x.profile_expires)+' · Hạn: '+buildDate(x.profile_expires):'IPA chưa xác định chữ ký'}${x.profile_team?' · Team '+esc(x.profile_team):''}</div>
+ ${related.length?'<div class="sub" style="color:var(--gold)">Đang theo dõi gia hạn trên '+related.length+' bản cài — xóa cần xác nhận hủy theo dõi</div>':''}
+ </div>
+ <div class="library-actions"><span class="expiration ${expClass(x.profile_expires)}">${x.signed_candidate?'Có profile':'Chưa ký'}</span>
+ <button type="button" class="button small" data-rename-ipa="${esc(x.id)}">Đổi tên</button>
+ <button type="button" class="button small danger" data-delete-ipa="${esc(x.id)}">🗑 Xóa</button></div></div>`;
+}).join(''):'<div class="placeholder">Nhập IPA để bắt đầu.</div>';
 $('profileList').innerHTML=state.profiles.length?state.profiles.map(x=>`<div class="item"><div class="details"><div class="name">${esc(x.filename)}</div><div class="sub">${esc(x.bundle_pattern)} · ${esc(x.team)}<br>${expLabel(x.expires_at)}</div></div></div>`).join(''):'<div class="placeholder">Chưa có profile.</div>';
-const options=(arr,key,label)=>arr.map(x=>`<option value="${esc(x[key])}">${esc(label(x))}</option>`).join('');$('ipaChoice').innerHTML=options(state.ipas,'id',x=>x.name+' · '+x.bundle_id);{const previousFreeIpa=$('freeIpaChoice').value;$('freeIpaChoice').innerHTML=options(state.ipas,'id',x=>x.name+' · '+x.bundle_id);if(state.ipas.some(x=>x.id===previousFreeIpa))$('freeIpaChoice').value=previousFreeIpa;};$('freeDeviceChoice').innerHTML=options(state.devices,'udid',x=>x.name||x.udid);$('deviceChoice').innerHTML=options(state.devices,'udid',x=>x.name||x.udid);$('profileChoice').innerHTML='<option value="">Tự chọn profile tương thích</option>'+options(state.profiles,'id',x=>x.filename+' · '+expLabel(x.expires_at));
+const options=(arr,key,label)=>arr.map(x=>`<option value="${esc(x[key])}">${esc(label(x))}</option>`).join('');$('ipaChoice').innerHTML=options(state.ipas,'id',buildLabel);{const previousFreeIpa=$('freeIpaChoice').value;$('freeIpaChoice').innerHTML=options(state.ipas,'id',buildLabel);if(state.ipas.some(x=>x.id===previousFreeIpa))$('freeIpaChoice').value=previousFreeIpa;};$('freeDeviceChoice').innerHTML=options(state.devices,'udid',x=>x.name||x.udid);$('deviceChoice').innerHTML=options(state.devices,'udid',x=>x.name||x.udid);$('profileChoice').innerHTML='<option value="">Tự chọn profile tương thích</option>'+options(state.profiles,'id',x=>x.filename+' · '+expLabel(x.expires_at));
 $('deviceList').innerHTML=state.devices.length?state.devices.map(x=>`<div class="item"><div class="square">▥</div><div class="details"><div class="name">${esc(x.name||x.DeviceName||x.device_name||'iPhone / iPad')}</div><div class="sub code">${esc(x.udid)}</div><div class="sub">${esc(x.product_type||x.ProductType||'Thiết bị đã ghép đôi')}</div></div><span class="expiration">Kết nối</span></div>`).join(''):'<div class="placeholder">Không thấy thiết bị nào đang ghép đôi.</div>';}
 function cleanDevices(raw){const arr=Array.isArray(raw)?raw:[];return arr.map(x=>({udid:x.udid||x.serial||x.serial_number||x.UniqueDeviceID||x.identifier||'',name:x.device_name||x.name||x.DeviceName||'',product_type:x.product_type||x.ProductType||''})).filter(x=>x.udid)}
 async function load(){try{let d=await api('/overview');state={...state,...d};render();$('serverDot').classList.remove('off');$('serverStatus').textContent='Đã kết nối';}catch(e){$('serverDot').classList.add('off');$('serverStatus').textContent='Chưa xác thực';notify(e.message,true)}}
@@ -127,23 +154,49 @@ $('loginBtn').onclick=busy(async()=>{token=$('token').value.trim();let d=await a
 $('reload').onclick=busy(async()=>{await load();await scan()});$('scanDevices').onclick=busy(scan);
 $('quickUpload').onclick=busy(async()=>{await upload($('quickIpa').files[0],'ipas');notify('Đã thêm IPA');await load()});$('uploadIpa').onclick=busy(async()=>{await upload($('ipaFile').files[0],'ipas');notify('Đã thêm IPA');await load()});$('uploadProfile').onclick=busy(async()=>{await upload($('profileFile').files[0],'profiles');notify('Đã thêm profile');await load()});
 
+async function removeIPAs(ids,all=false){
+ const chosen=all?state.ipas:state.ipas.filter(x=>ids.includes(x.id));
+ if(!chosen.length)throw Error('Chưa chọn bản build nào');
+ const linked=state.installations.filter(x=>chosen.some(ipa=>ipa.id===x.source_ipa_id||ipa.id===x.current_ipa_id));
+ const force=linked.length>0;
+ let message='Xóa '+chosen.length+' bản IPA khỏi thư viện Windows?';
+ if(force)message+='\\n\\n⚠ Có '+linked.length+' bản cài đang được theo dõi gia hạn. XÓA sẽ hủy lịch gia hạn của chúng.';
+ message+='\\n\\nKhông gỡ app trên iPhone, không thu hồi profile Apple. Không thể hoàn tác.';
+ if(!window.confirm(message))return;
+ const phrase=all?'DELETE ALL IPAS':'DELETE SELECTED IPAS';
+ const typed=window.prompt('Xác nhận lần cuối: nhập chính xác '+phrase+' để xóa');
+ if(typed!==phrase){notify('Đã hủy thao tác xóa');return;}
+ const result=await post('/ipas/bulk-delete',{all,ipa_ids:all?[]:ids,force,confirm:phrase});
+ notify('Đã xóa '+result.deleted_ids.length+' IPA, hủy '+result.tracking_removed+' lịch gia hạn');
+ await load();
+}
+$('selectAllIPA').onclick=()=>{
+ const boxes=[...document.querySelectorAll('.ipa-select')];
+ const next=boxes.some(x=>!x.checked);
+ boxes.forEach(x=>{x.checked=next;});
+};
+$('deleteSelectedIPA').onclick=busy(async()=>{
+ const ids=[...document.querySelectorAll('.ipa-select:checked')].map(x=>x.dataset.ipaId);
+ await removeIPAs(ids);
+});
+$('deleteAllIPA').onclick=busy(async()=>{await removeIPAs([],true)});
 $('libraryList').addEventListener('click',async (event)=>{
-  const button=event.target.closest('button[data-delete-ipa]');
-  if(!button)return;
-  const id=button.dataset.deleteIpa;
-  const ipa=state.ipas.find(item=>item.id===id);
-  if(!ipa)return;
-  if(!window.confirm('Xóa file IPA "'+ipa.name+'" khỏi thư viện trên Windows?\n\nThao tác này không gỡ ứng dụng trên iPhone. Không thể hoàn tác.'))return;
-  button.disabled=true;
-  try{
-    await api('/ipas/'+encodeURIComponent(id),{method:'DELETE'});
-    notify('Đã xóa file IPA: '+ipa.name);
-    await load();
-  }catch(error){
-    notify(error.message,true);
-  }finally{
-    button.disabled=false;
-  }
+ const rename=event.target.closest('button[data-rename-ipa]');
+ if(rename){
+   const x=state.ipas.find(x=>x.id===rename.dataset.renameIpa);if(!x)return;
+   const alias=window.prompt('Tên phân biệt cho bản build '+x.id.slice(0,12)+' (để trống để xóa tên riêng)',x.alias||'');
+   if(alias===null)return;
+   rename.disabled=true;
+   try{
+     await api('/ipas/'+encodeURIComponent(x.id)+'/label',{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({alias})});
+     notify('Đã cập nhật tên bản build');await load();
+   }catch(e){notify(e.message,true)}finally{rename.disabled=false;}
+   return;
+ }
+ const btn=event.target.closest('button[data-delete-ipa]');if(!btn)return;
+ const x=state.ipas.find(x=>x.id===btn.dataset.deleteIpa);if(!x)return;
+ btn.disabled=true;
+ try{await removeIPAs([x.id]);}catch(e){notify(e.message,true)}finally{btn.disabled=false;}
 });
 $('installBtn').onclick=busy(async()=>{if($('resignCheck').checked&&!state.tools.signing_p12)throw Error('Dang chon Ky lai bang P12. Neu dung Apple ID mien phi, hay cai IPA trong SideStore.');let ipa_id=$('ipaChoice').value,udid=$('deviceChoice').value;if(!ipa_id||!udid)throw Error('Chọn IPA và thiết bị');let d=await post('/install',{ipa_id,udid,profile_id:$('profileChoice').value||null,resign:$('resignCheck').checked,auto_renew:$('renewCheck').checked});notify('Đã đưa vào hàng đợi: '+d.job_id.slice(0,8));showSection('dashboard');setTimeout(load,1200)});
 $('signBtn').onclick=busy(async()=>{if(!state.tools.signing_p12)throw Error('Khong can P12? Dung tab Apple ID mien phi va ky trong SideStore. Nut nay chi danh cho P12.');let ipa_id=$('ipaChoice').value,udid=$('deviceChoice').value;if(!ipa_id||!udid)throw Error('Chọn IPA và thiết bị');let d=await post('/sign',{ipa_id,udid,profile_id:$('profileChoice').value||null});notify('Đã gửi tác vụ ký: '+d.job_id.slice(0,8));setTimeout(load,1200)});

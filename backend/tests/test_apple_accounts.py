@@ -1,5 +1,6 @@
 """Safety tests for loopback Apple account management."""
 from fastapi.testclient import TestClient
+from dataclasses import replace
 from test_api import config
 from viepn.api import create_app
 from viepn.apple_auth import AppleAuthFlow
@@ -19,8 +20,7 @@ def test_apple_account_endpoints_require_localhost_and_auth(tmp_path):
         assert client.post("/api/apple/auth/cancel", headers=wrong).status_code == 403
 
 def test_apple_controls_forbidden_on_lan_bound_server(tmp_path):
-    cfg = config(tmp_path)
-    cfg.host = "0.0.0.0"
+    cfg = replace(config(tmp_path), host="0.0.0.0")
     with local_client(create_app(cfg)) as client:
         assert client.get("/api/apple/accounts", headers=AUTH).status_code == 403
 

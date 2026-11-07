@@ -101,7 +101,7 @@ jobs:
           assert digest in Path("dist/ViePN-Windows-Portable.sha256").read_text()
           with zipfile.ZipFile(p) as z:
               m=json.loads(z.read("manifest.json"))
-              assert m["version"]=="2.1.2"
+              assert m["version"]=="2.1.3"
               assert len(m["files"])>=15
               for name, sha in m["files"].items():
                   assert hashlib.sha256(z.read(name)).hexdigest()==sha

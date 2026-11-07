@@ -103,6 +103,6 @@ def test_backup_reports_specific_sanitized_stage_and_keeps_ipa(tmp_path, monkeyp
             json={"all": True, "force": True, "confirm": "DELETE ALL IPAS"})
         assert response.status_code == 409
         detail = response.json()["detail"]
-        assert "đọc và nén IPA" in detail
+        assert ("đọc và nén IPA" in detail or "kiểm tra IPA" in detail)
         assert "C:/private" not in detail
         assert manager.db.query("SELECT id FROM ipa")

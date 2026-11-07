@@ -38,6 +38,8 @@ jobs:
       - uses: actions/checkout@v4
       - name: Install XcodeGen
         run: brew install xcodegen
+      - name: Prepare ViePN iOS app icon
+        run: sh ios/scripts/prepare-app-icon.sh
       - name: Generate Xcode project
         run: cd ios && xcodegen generate
       - name: Build iOS for device (unsigned)

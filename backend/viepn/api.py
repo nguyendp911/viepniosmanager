@@ -114,7 +114,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         yield
         await manager.stop()
 
-    app = FastAPI(title='ViePN iOS Manager', version='2.1.2', lifespan=lifespan,
+    app = FastAPI(title='ViePN iOS Manager', version='2.1.3', lifespan=lifespan,
                   docs_url=None, redoc_url=None, openapi_url=None)
     app.state.manager = manager
 
@@ -154,7 +154,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
 
     @app.get('/api/health')
     def health():
-        return {'ok': True, 'service': 'ViePN iOS Manager', 'version': '2.1.2'}
+        return {'ok': True, 'service': 'ViePN iOS Manager', 'version': '2.1.3'}
 
     @app.get('/api/overview', dependencies=[Depends(auth)])
     def overview():

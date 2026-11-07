@@ -8,6 +8,15 @@ struct IPAInfo: Codable, Identifiable {
     let version: String?
     let profileExpires: String?
     let signedCandidate: Int
+    let alias: String?
+    let createdAt: String?
+    let sizeBytes: Int?
+    let profileTeam: String?
+
+    var buildDisplayName: String {
+        let base = (alias?.isEmpty == false) ? alias! : name
+        return "\(base) · v\(version ?? "–") · \(id.prefix(8))"
+    }
 }
 
 struct InstallationInfo: Codable, Identifiable {

@@ -211,7 +211,7 @@ class Manager:
         temp = self.cfg.root / 'incoming' / f'{uuid.uuid4().hex}.ipa'
         try:
             details = await asyncio.to_thread(
-                sign_free_ipa, Path(ipa['file_path']), temp, udid
+                sign_free_ipa, Path(ipa['file_path']), temp, udid, params.get('account')
             )
             signed = self.add_ipa(temp)
             return {
@@ -234,10 +234,10 @@ class Manager:
             'auto_renew': bool(params.get('auto_renew', True)),
         })
         self.db.exec('''UPDATE installations SET source_ipa_id=?,
-                       auto_renew=?,signing_mode='apple_personal' WHERE id=?''',
+                       auto_renew=?,signing_mode='apple_personal',apple_account=? WHERE id=?''',
                      (result['source_ipa_id'],
                       int(bool(params.get('auto_renew', True))),
-                      installed['installation_id']))
+                      result.get('account'), installed['installation_id']))
         return {**installed, 'signing_mode': 'free_apple_id',
                 'signed_ipa_id': result['signed_ipa_id']}
 
@@ -250,9 +250,12 @@ class Manager:
             result = await self._apple_sign({
                 'ipa_id': install['source_ipa_id'],
                 'udid': install['device_udid'],
+                'account': install.get('apple_account'),
             })
             if not result.get('expires_at'):
                 raise ValueError('Apple did not provide expiry of renewed profile')
+            if result['bundle_id'] != install['bundle_id']:
+                raise ValueError('Renewal bundle ID changed; sign in with the Apple ID originally used for this app')
             previous = datetime.fromisoformat(install['expires_at'])
             refreshed = datetime.fromisoformat(result['expires_at'])
             if refreshed <= previous:

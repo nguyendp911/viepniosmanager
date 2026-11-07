@@ -160,5 +160,5 @@ jobs:
             "release-assets/ViePNMobile-2.1.4-UNSIGNED.ipa.sha256" \
             --target "$GITHUB_SHA" \
             --title "ViePN iOS Manager 2.1.4 (Stable)" \
-            --notes-file docs/RELEASE_2_1_2.md \
+            --notes-file docs/RELEASE_2_1_4.md \
             --latest

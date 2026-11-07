@@ -249,7 +249,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     async def backups_download(name: str):
         # Names are generated, never accept arbitrary paths or user files.
         import re
-        if not re.fullmatch(r'ViePN-[0-9]{8}-[0-9]{6}-[a-f0-9]{8}\\.zip', name):
+        if not re.fullmatch(r'ViePN-[0-9]{8}-[0-9]{6}-[a-f0-9]{8}\.zip', name):
             raise HTTPException(404, detail='Backup not found')
         source = (cfg.root / 'backups' / name).resolve()
         if source.parent != (cfg.root / 'backups').resolve() or not source.is_file():

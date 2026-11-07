@@ -16,6 +16,8 @@ from pydantic import BaseModel, Field
 from .config import Settings, load_settings
 from .free_sign import ShareStore
 from .service import Manager
+from .backups import create_backup, list_backups, verify_backup
+from .doctor import doctor
 from .native_sign import status as apple_account_status
 from .apple_auth import AppleAuthFlow
 from .tools import ExternalToolError, check_udid, connected_devices, installed_apps
@@ -104,7 +106,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         yield
         await manager.stop()
 
-    app = FastAPI(title='ViePN iOS Manager', version='1.5.0', lifespan=lifespan,
+    app = FastAPI(title='ViePN iOS Manager', version='1.6.0', lifespan=lifespan,
                   docs_url=None, redoc_url=None, openapi_url=None)
     app.state.manager = manager
 
@@ -144,7 +146,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
 
     @app.get('/api/health')
     def health():
-        return {'ok': True, 'service': 'ViePN iOS Manager', 'version': '1.5.0'}
+        return {'ok': True, 'service': 'ViePN iOS Manager', 'version': '1.6.0'}
 
     @app.get('/api/overview', dependencies=[Depends(auth)])
     def overview():
@@ -227,6 +229,38 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             raise HTTPException(404, detail='IPA not found')
         return result
 
+    @app.get('/api/doctor', dependencies=[Depends(auth)])
+    async def connection_doctor():
+        return await asyncio.to_thread(doctor, cfg)
+
+    @app.get('/api/backups', dependencies=[Depends(auth), Depends(local_apple_control)])
+    def backups_list():
+        return {'backups': list_backups(cfg.root)}
+
+    @app.post('/api/backups', dependencies=[Depends(auth), Depends(local_apple_control)])
+    async def backups_create():
+        async with manager.lock:
+            try:
+                return await asyncio.to_thread(create_backup, cfg.root, manager.db, 'manual')
+            except (ValueError, OSError) as exc:
+                raise HTTPException(409, detail=str(exc)) from exc
+
+    @app.get('/api/backups/{name}', dependencies=[Depends(auth), Depends(local_apple_control)])
+    async def backups_download(name: str):
+        # Names are generated, never accept arbitrary paths or user files.
+        import re
+        if not re.fullmatch(r'ViePN-[0-9]{8}-[0-9]{6}-[a-f0-9]{8}\\.zip', name):
+            raise HTTPException(404, detail='Backup not found')
+        source = (cfg.root / 'backups' / name).resolve()
+        if source.parent != (cfg.root / 'backups').resolve() or not source.is_file():
+            raise HTTPException(404, detail='Backup not found')
+        try:
+            await asyncio.to_thread(verify_backup, source)
+        except (ValueError, OSError, KeyError):
+            raise HTTPException(409, detail='Backup failed integrity verification') from None
+        return FileResponse(source, media_type='application/zip',
+                            filename=name, headers={'Cache-Control': 'no-store'})
+
     @app.post('/api/ipas/bulk-delete', dependencies=[Depends(auth)])
     async def bulk_delete_ipas(payload: DeleteIPARequest):
         # The confirmation phrase is an additional explicit destructive-action
@@ -237,6 +271,9 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         async with manager.lock:
             ids = [r['id'] for r in manager.db.query('SELECT id FROM ipa')] if payload.all else payload.ipa_ids
             try:
+                # Fail closed: make a verified local snapshot before destructive bulk deletion.
+                if ids:
+                    await asyncio.to_thread(create_backup, cfg.root, manager.db, 'before-bulk-delete')
                 return manager.delete_ipas(ids, force=payload.force)
             except ValueError as exc:
                 raise HTTPException(409, detail=str(exc)) from exc

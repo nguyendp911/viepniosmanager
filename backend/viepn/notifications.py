@@ -44,7 +44,7 @@ class NotificationService:
             obj = {}
         topic = obj.get("topic")
         if not isinstance(topic, str) or not topic.startswith("viepn-") or len(topic) != 38:
-            topic = "viepn-" + secrets.token_hex(16)
+            topic = self._new_topic
         return {"enabled": obj.get("enabled") is True, "topic": topic}
 
     def _write(self, payload: dict) -> None:

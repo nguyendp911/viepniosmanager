@@ -29,7 +29,7 @@ def test_delete_removes_record_and_real_file(tmp_path):
         assert client.delete(f'/api/ipas/{ipa_id}').status_code == 401
         assert client.delete('/api/ipas/unknown', headers=AUTH).status_code == 404
         assert client.delete(f'/api/ipas/{ipa_id}', headers=AUTH).json() == {
-            'deleted': True, 'id': ipa_id, 'file_removed': True, 'tracking_removed': 0
+            'deleted': True, 'id': ipa_id, 'file_removed': True, 'tracking_removed': 0, 'pending_file_deletes': 0
         }
         assert not library_path.exists()
         assert app.state.manager.db.one('SELECT id FROM ipa WHERE id=?', (ipa_id,)) is None

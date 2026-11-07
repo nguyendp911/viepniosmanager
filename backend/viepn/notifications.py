@@ -34,6 +34,8 @@ class NotificationService:
         self._file = root / "notifications.json"
         self.db = db
         self._lock = threading.RLock()
+        # Stable for this service lifetime even before first opt-in/write.
+        self._new_topic = self._new_topic
 
     def _read(self) -> dict:
         try:

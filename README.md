@@ -15,7 +15,7 @@ Công cụ quản lý **IPA và iPhone/iPad của chính bạn** trên Windows, 
 
 ## Bắt đầu từ Windows
 
-1. Cài **Python 3.12** và [iTunes bản cho Windows từ Apple](https://www.apple.com/itunes/) để có dịch vụ Apple Mobile Device Service. Mở khóa iPhone, kết nối USB và chọn **Trust This Computer**.
+1. Cài **Python 3.10 trở lên** (có thể dùng Python 3.14) và [iTunes bản cho Windows từ Apple](https://www.apple.com/itunes/) để có dịch vụ Apple Mobile Device Service. Mở khóa iPhone, kết nối USB và chọn **Trust This Computer**.
 2. Mở PowerShell tại thư mục repo, chạy:
 
    ```powershell
@@ -30,10 +30,27 @@ Công cụ quản lý **IPA và iPhone/iPad của chính bạn** trên Windows, 
 Để chạy thủ công (không dùng PowerShell):
 
 ```powershell
-py -3.12 -m venv .venv
+py -3 -m venv .venv
 .\.venv\Scripts\python.exe -m pip install -r backend\requirements.txt
 .\.venv\Scripts\python.exe backend\run.py
 ```
+
+## Python 3.14 / Windows PowerShell 5.1
+
+Hai script trong `windows/` chỉ dùng ký tự ASCII để tránh lỗi mã hóa khi chạy bằng Windows PowerShell 5.1. `setup.ps1` tự phát hiện bản Python 3 mới nhất thông qua `py -3` (hoặc dùng `python` nếu không có launcher), không ép dùng 3.12.
+
+Để dùng Python 3.14 thủ công:
+
+```powershell
+cd C:\ViePN-iOS-Manager
+py -3.14 --version
+py -3.14 -m venv .venv
+.\.venv\Scripts\python.exe -m pip install --upgrade pip
+.\.venv\Scripts\python.exe -m pip install -r backend\requirements.txt
+.\.venv\Scripts\python.exe backend\run.py
+```
+
+Nếu `py -3.14` không hoạt động, dùng `py --list-paths` để kiểm tra các phiên bản Python. Cài đặt thư viện có thể phát sinh lỗi riêng tùy cấu hình Windows và phiên bản dependency; khi đó hãy gửi toàn bộ lỗi `pip install` để chẩn đoán.
 
 ## Cấu hình ký (PowerShell)
 
@@ -65,7 +82,7 @@ $env:VIEPN_ZSIGN = 'C:\\Tools\\zsign.exe'
 ## Kiểm thử
 
 ```powershell
-py -3.12 -m pip install -r backend/requirements-dev.txt
+py -3 -m pip install -r backend/requirements-dev.txt
 cd backend
 ..\.venv\Scripts\python.exe -m pytest -q
 ```

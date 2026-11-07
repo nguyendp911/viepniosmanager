@@ -14,7 +14,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 DIST = ROOT / "dist"
 DIRECTORIES = ("backend", "web", "windows", "ios", "docs")
-TOP_LEVEL = ("Start-ViePN.bat", "Install-ViePN.bat", "README.md")
+TOP_LEVEL = ("Start-ViePN.bat", "Install-ViePN.bat", "Update-ViePN.bat", "README.md")
 IGNORED = {".git", ".venv", "__pycache__", ".pytest_cache", ".DS_Store",
            "build", "artifacts", "dist", "node_modules", "incoming", "session"}
 ALLOWED_SUFFIXES = {".py", ".txt", ".md", ".ps1", ".bat", ".html", ".swift",
@@ -43,7 +43,7 @@ def build() -> tuple[Path, Path]:
     for directory in DIRECTORIES:
         members.extend((ROOT / directory).rglob("*"))
     members = sorted([p for p in members if allowed(p)], key=lambda p: p.as_posix())
-    manifest = {"schema": 1, "version": "2.1.1", "files": {}}
+    manifest = {"schema": 1, "version": "2.1.2", "files": {}}
     with zipfile.ZipFile(archive_path, "w", zipfile.ZIP_DEFLATED, compresslevel=6) as archive:
         for path in members:
             name = path.relative_to(ROOT).as_posix()

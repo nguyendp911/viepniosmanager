@@ -166,7 +166,15 @@ def login_interactive() -> dict:
         del password
 
 
-def sign_free_ipa(source: Path, destination: Path, udid: str) -> dict:
+def sign_free_ipa(source: Path, destination: Path, udid: str,
+                  account_email: str | None = None) -> dict:
+    """Sign under the original Apple account, ignoring another active UI account."""
+    with gsa.acting_as(account_email):
+        return _sign_free_ipa_impl(source, destination, udid, account_email)
+
+
+def _sign_free_ipa_impl(source: Path, destination: Path, udid: str,
+                        account_email: str | None) -> dict:
     """Get NEW Apple profile, sign IPA, return signed file metadata.
 
     This *only signs*. Installer and account tracking are owned by Manager.
@@ -181,10 +189,13 @@ def sign_free_ipa(source: Path, destination: Path, udid: str) -> dict:
         raise NativeSigningError("Output cannot overwrite original IPA")
 
     _apple_environment()
-    if not gsa.status().get("authenticated"):
+    try:
+        gsa.load_session(account_email)
+    except Exception:
         raise NativeSigningError(
-            "Apple ID is not signed in. Run windows\\apple-login.ps1 locally."
-        )
+            "Apple ID session is missing or expired. Sign in again under the original account "
+            "in ViePN or run windows\\apple-login.ps1 locally."
+        ) from None
     info = ipa_tools.inspect(str(source))
     if info.get("has_sc_info"):
         raise NativeSigningError("App Store encrypted IPA cannot be re-signed")

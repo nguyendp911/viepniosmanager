@@ -188,9 +188,9 @@ private struct LibraryView: View {
                         Label("Xóa toàn bộ IPA (kể cả có profile)", systemImage: "trash")
                             .frame(maxWidth: .infinity)
                     }.buttonStyle(.bordered).disabled(model.busy)
-                    ForEach(Array(ipas.enumerated()), id: \.element.id) { index, ipa in
+                    ForEach(ipas) { ipa in
                         VStack(alignment: .leading, spacing: 7) {
-                            Text("#\(index + 1) · \(ipa.alias ?? ipa.name)")
+                            Text(ipa.alias ?? ipa.name)
                                 .font(.subheadline.bold())
                             Text("\(ipa.name) · v\(ipa.version ?? "–")")
                                 .font(.caption).foregroundStyle(Palette.secondary)

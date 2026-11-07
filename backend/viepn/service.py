@@ -63,6 +63,15 @@ class Manager:
         self.db.exec('UPDATE ipa SET alias=? WHERE id=?', (name or None, ipa_id))
         return {'id': ipa_id, 'alias': name or None}
 
+    def classify_ipa(self, ipa_id: str, channel: str) -> dict | None:
+        allowed = {'unassigned', 'stable', 'test', 'dev', 'archive'}
+        if channel not in allowed:
+            raise ValueError('Unknown build channel')
+        if not self.db.one('SELECT id FROM ipa WHERE id=?', (ipa_id,)):
+            return None
+        self.db.exec('UPDATE ipa SET channel=? WHERE id=?', (channel, ipa_id))
+        return {'id': ipa_id, 'channel': channel}
+
     def delete_ipa(self, ipa_id: str, force: bool = False) -> dict | None:
         """Remove a single IPA. force also removes renewal tracking for this IPA.
 

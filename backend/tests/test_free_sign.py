@@ -15,9 +15,9 @@ def test_free_status_does_not_require_signing_credentials(tmp_path):
         r = client.get('/api/free/status', headers=AUTH)
         assert r.status_code == 200
         body = r.json()
-        assert body['mode'] == 'sidestore_external'
-        assert body['requires_p12'] is False
-        assert body['apple_credentials_stored'] is False
+        assert body['mode'] == 'native_apple'
+        assert body['requires_p12_upload'] is False
+        assert body['authenticated'] is False
 
 
 def test_share_authentication_one_time_and_missing_file(tmp_path):

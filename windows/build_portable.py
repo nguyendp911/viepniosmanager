@@ -19,7 +19,7 @@ IGNORED = {".git", ".venv", "__pycache__", ".pytest_cache", ".DS_Store",
            "build", "artifacts", "dist", "node_modules", "incoming", "session"}
 ALLOWED_SUFFIXES = {".py", ".txt", ".md", ".ps1", ".bat", ".html", ".swift",
                     ".plist", ".json", ".yml", ".yaml", ".sh", ".xcassets",
-                    ".png", ".jpg", ".jpeg", ".svg", ".xcconfig", ".entitlements"}
+                    ".png", ".jpg", ".jpeg", ".svg", ".pem", ".xcconfig", ".entitlements"}
 
 
 def allowed(path: Path) -> bool:

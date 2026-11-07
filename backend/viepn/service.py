@@ -52,59 +52,113 @@ class Manager:
         self.db.event('ipa_uploaded', f"{meta['name']} {meta['bundle_id']}")
         return self.db.one('SELECT * FROM ipa WHERE id=?', (key,))
 
-    def delete_ipa(self, ipa_id: str) -> dict | None:
-        """Remove a library IPA from disk and SQLite, preserving renewal inputs.
-
-        This is invoked while Manager.lock is held by the API, preventing
-        concurrent job execution from reading a file being deleted.
-        """
+    def rename_ipa(self, ipa_id: str, alias: str | None) -> dict | None:
+        """User-facing build nickname, independent of Info.plist app name."""
         record = self.db.one('SELECT * FROM ipa WHERE id=?', (ipa_id,))
-        if record is None:
+        if not record:
             return None
+        name = (alias or '').strip()
+        if len(name) > 80 or any(ord(c) < 32 for c in name):
+            raise ValueError('Tên bản build phải dưới 80 ký tự và không chứa ký tự điều khiển.')
+        self.db.exec('UPDATE ipa SET alias=? WHERE id=?', (name or None, ipa_id))
+        return {'id': ipa_id, 'alias': name or None}
 
-        # Retain both the original source and the currently installed signed IPA
-        # because automated re-signing or a manual reinstall might need them.
-        installed = self.db.one(
-            'SELECT id FROM installations WHERE source_ipa_id=? OR current_ipa_id=? LIMIT 1',
-            (ipa_id, ipa_id))
-        if installed:
+    def delete_ipa(self, ipa_id: str, force: bool = False) -> dict | None:
+        """Remove a single IPA. force also removes renewal tracking for this IPA.
+
+        Never uninstalls anything from iPhone or revokes an Apple Developer
+        profile. Must run under Manager.lock.
+        """
+        results = self.delete_ipas([ipa_id], force=force)
+        if not results['deleted_ids']:
+            return None
+        return {
+            'deleted': True,
+            'id': ipa_id,
+            'file_removed': results['files_removed'] == 1,
+            'tracking_removed': results['tracking_removed'],
+        }
+
+    def delete_ipas(self, ids: list[str], force: bool = False) -> dict:
+        """Atomic database removal with staged filesystem changes.
+
+        Reject active jobs and their source installations. Deleting files with
+        embedded profiles is allowed; force=true explicitly detaches tracked
+        installations and therefore disables their renewal schedules.
+        """
+        unique = list(dict.fromkeys(ids))
+        if not unique:
+            return {'deleted_ids': [], 'files_removed': 0, 'tracking_removed': 0}
+        rows = [self.db.one('SELECT * FROM ipa WHERE id=?', (item,)) for item in unique]
+        records = [row for row in rows if row is not None]
+        if not records:
+            return {'deleted_ids': [], 'files_removed': 0, 'tracking_removed': 0}
+        selected = {r['id'] for r in records}
+        installations = self.db.query('SELECT id,source_ipa_id,current_ipa_id FROM installations')
+        linked = [x for x in installations
+                  if x['source_ipa_id'] in selected or x['current_ipa_id'] in selected]
+        if linked and not force:
             raise ValueError(
-                'IPA đang được dùng bởi một ứng dụng đã theo dõi/gia hạn. '
-                'Không thể xóa để tránh mất dữ liệu gia hạn.')
+                'Một số IPA đang được theo dõi gia hạn. Hãy chọn Xóa cả dữ liệu theo dõi '
+                'nếu bạn thật sự muốn xóa chúng.'
+            )
 
-        # Also reject queued/running jobs that have not created installations yet.
-        active_jobs = self.db.query(
-            "SELECT input_json FROM jobs WHERE state IN ('queued','running')")
-        for job in active_jobs:
+        protected_installations = {x['id'] for x in linked}
+        for job in self.db.query(
+            "SELECT kind,input_json FROM jobs WHERE state IN ('queued','running')"
+        ):
             try:
-                params = json.loads(job['input_json'])
+                payload = json.loads(job['input_json'])
             except (TypeError, ValueError):
                 continue
-            if isinstance(params, dict) and params.get('ipa_id') == ipa_id:
-                raise ValueError('IPA đang được sử dụng trong tác vụ ký/cài. Hãy thử lại khi tác vụ kết thúc.')
+            if not isinstance(payload, dict):
+                continue
+            if (payload.get('ipa_id') in selected or
+                    payload.get('installation_id') in protected_installations):
+                raise ValueError(
+                    'Đang có tác vụ ký/cài/gia hạn sử dụng IPA này. '
+                    'Hãy đợi tác vụ kết thúc rồi xóa.'
+                )
 
         library = (self.cfg.root / 'ipas').resolve()
-        expected = library / f"{record['sha256']}.ipa"
-        path = Path(record['file_path']).resolve()
-        # Never unlink an arbitrary path if a record is accidentally corrupted.
-        if path != expected or path.parent != library:
-            raise ValueError('Đường dẫn file IPA không hợp lệ; thao tác xóa bị từ chối.')
+        validated = []
+        for record in records:
+            expected = library / f"{record['sha256']}.ipa"
+            target = Path(record['file_path']).resolve()
+            if target != expected or target.parent != library:
+                raise ValueError('Đường dẫn IPA không hợp lệ. Đã hủy thao tác xóa.')
+            validated.append((record, target))
 
-        # Stage file on the same volume: DB failure can restore the original.
-        staged = library / f".delete-{uuid.uuid4().hex}.ipa"
-        had_file = path.is_file()
-        if had_file:
-            os.replace(path, staged)
+        moved: list[tuple[Path, Path]] = []
         try:
-            self.db.exec('DELETE FROM ipa WHERE id=?', (ipa_id,))
+            for record, target in validated:
+                if target.is_file():
+                    staged = library / f".delete-{uuid.uuid4().hex}.ipa"
+                    os.replace(target, staged)
+                    moved.append((target, staged))
+
+            # Commit selected rows and tracking in one SQLite transaction.
+            with self.db.connect() as db:
+                if linked:
+                    db.executemany('DELETE FROM installations WHERE id=?',
+                                   [(item['id'],) for item in linked])
+                db.executemany('DELETE FROM ipa WHERE id=?',
+                               [(item,) for item in selected])
         except Exception:
-            if had_file:
-                os.replace(staged, path)
+            for target, staged in reversed(moved):
+                if staged.exists():
+                    os.replace(staged, target)
             raise
-        if had_file:
+
+        for _, staged in moved:
             staged.unlink(missing_ok=True)
-        self.db.event('ipa_deleted', f"{record['name']} {record['bundle_id']}")
-        return {'deleted': True, 'id': ipa_id, 'file_removed': had_file}
+        self.db.event('ipas_deleted',
+                      f"{len(records)} IPA removed; {len(linked)} renewal records removed")
+        return {
+            'deleted_ids': [r['id'] for r in records],
+            'files_removed': len(moved),
+            'tracking_removed': len(linked),
+        }
 
     def add_profile(self, temp_path: Path, filename: str) -> dict:
         meta = parse_provision(temp_path.read_bytes())

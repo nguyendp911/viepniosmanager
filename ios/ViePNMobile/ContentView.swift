@@ -156,6 +156,12 @@ private struct LibraryView: View {
     @State private var selectedDevice = ""
     @State private var resign = false
     @State private var autoRenew = true
+    @State private var editingBuildID = ""
+    @State private var editingBuildName = ""
+    @State private var showRenamePrompt = false
+    @State private var pendingDeleteIDs: [String] = []
+    @State private var pendingDeleteAll = false
+    @State private var showDeletePrompt = false
     private let ipaType = UTType(filenameExtension: "ipa") ?? .data
 
     var body: some View {
@@ -166,25 +172,70 @@ private struct LibraryView: View {
                     .frame(maxWidth: .infinity)
             }.buttonStyle(.borderedProminent)
             Panel {
-                Text("Ứng dụng").font(.headline)
+                HStack {
+                    Text("Các bản build IPA").font(.headline)
+                    Spacer()
+                    Text("\(model.overview?.ipas.count ?? 0) bản").font(.caption).foregroundStyle(Palette.secondary)
+                }
+                Text("Các bản build trùng tên được phân biệt bằng mã SHA, ngày nhập và hạn profile. Bạn có thể đổi tên riêng cho từng bản.")
+                    .font(.caption).foregroundStyle(Palette.secondary)
                 if let ipas = model.overview?.ipas, !ipas.isEmpty {
-                    ForEach(ipas) { ipa in
-                        VStack(alignment: .leading, spacing: 4) {
-                            Text(ipa.name).font(.subheadline.bold())
-                            Text(ipa.bundleId).font(.caption).foregroundStyle(Palette.secondary)
-                            Text(ipa.signedCandidate == 1 ? "Có embedded profile · chưa xác minh chữ ký" : "Chưa xác định chữ ký")
-                                .font(.caption2).foregroundStyle(ipa.signedCandidate == 1 ? Palette.mint : .orange)
+                    Button(role: .destructive) {
+                        pendingDeleteAll = true
+                        pendingDeleteIDs = ipas.map(\.id)
+                        showDeletePrompt = true
+                    } label: {
+                        Label("Xóa toàn bộ IPA (kể cả có profile)", systemImage: "trash")
+                            .frame(maxWidth: .infinity)
+                    }.buttonStyle(.bordered).disabled(model.busy)
+                    ForEach(Array(ipas.enumerated()), id: \.element.id) { index, ipa in
+                        VStack(alignment: .leading, spacing: 7) {
+                            Text("#\(index + 1) · \(ipa.alias ?? ipa.name)")
+                                .font(.subheadline.bold())
+                            Text("\(ipa.name) · v\(ipa.version ?? "–")")
+                                .font(.caption).foregroundStyle(Palette.secondary)
+                            Text("\(ipa.bundleId) · SHA \(ipa.id.prefix(12))")
+                                .font(.system(size: 11, design: .monospaced))
+                                .foregroundStyle(Palette.secondary)
+                            Text("Ngày nhập: \(String((ipa.createdAt ?? "–").prefix(16)).replacingOccurrences(of: "T", with: " "))")
+                                .font(.caption2).foregroundStyle(Palette.secondary)
+                            if ipa.signedCandidate == 1 {
+                                Text("Có profile · Hết hạn: \(String((ipa.profileExpires ?? "Không rõ").prefix(16)).replacingOccurrences(of: "T", with: " "))")
+                                    .font(.caption2).foregroundStyle(Palette.mint)
+                            } else {
+                                Text("Chưa xác định chữ ký").font(.caption2).foregroundStyle(.orange)
+                            }
+                            if let count = model.overview?.installations.filter({
+                                $0.sourceIpaId == ipa.id || $0.currentIpaId == ipa.id
+                            }).count, count > 0 {
+                                Text("Đang theo dõi gia hạn: \(count) bản cài")
+                                    .font(.caption2).foregroundStyle(.orange)
+                            }
+                            HStack {
+                                Button("Đổi tên") {
+                                    editingBuildID = ipa.id
+                                    editingBuildName = ipa.alias ?? ""
+                                    showRenamePrompt = true
+                                }.buttonStyle(.bordered)
+                                Button("Xóa", role: .destructive) {
+                                    pendingDeleteAll = false
+                                    pendingDeleteIDs = [ipa.id]
+                                    showDeletePrompt = true
+                                }.buttonStyle(.bordered)
+                            }.disabled(model.busy)
                         }
                         Divider().overlay(.white.opacity(0.08))
                     }
-                } else { Text("Chưa nhập IPA").foregroundStyle(Palette.secondary) }
+                } else {
+                    Text("Chưa nhập IPA").foregroundStyle(Palette.secondary)
+                }
             }
             Panel {
                 Text("Ký và cài ứng dụng").font(.headline)
                 Picker("Ứng dụng", selection: $selectedIPA) {
                     Text("Chọn IPA").tag("")
                     ForEach(model.overview?.ipas ?? []) { ipa in
-                        Text(ipa.name).tag(ipa.id)
+                        Text(ipa.buildDisplayName).tag(ipa.id)
                     }
                 }.tint(.white)
                 Picker("iPhone", selection: $selectedDevice) {
@@ -204,6 +255,28 @@ private struct LibraryView: View {
                 }.buttonStyle(.borderedProminent)
                 .disabled(selectedIPA.isEmpty || selectedDevice.isEmpty || model.busy)
             }
+        }
+        .alert("Tên phân biệt bản build", isPresented: $showRenamePrompt) {
+            TextField("Tên mới (để trống để đặt lại)", text: $editingBuildName)
+            Button("Lưu") {
+                Task { await model.renameIPA(id: editingBuildID, alias: editingBuildName) }
+            }
+            Button("Hủy", role: .cancel) {}
+        } message: {
+            Text("Chỉ thay đổi tên hiển thị trong ViePN, không sửa IPA hoặc bundle ID.")
+        }
+        .confirmationDialog("Xóa IPA trên Windows?", isPresented: $showDeletePrompt,
+                            titleVisibility: .visible) {
+            Button("Xóa \(pendingDeleteIDs.count) IPA và hủy theo dõi gia hạn liên quan",
+                   role: .destructive) {
+                Task {
+                    await model.deleteIPAs(pendingDeleteIDs, all: pendingDeleteAll, force: true)
+                    if pendingDeleteIDs.contains(selectedIPA) { selectedIPA = "" }
+                }
+            }
+            Button("Hủy", role: .cancel) {}
+        } message: {
+            Text("Nếu một bản IPA đang được theo dõi gia hạn, lịch theo dõi sẽ bị xóa. Không gỡ ứng dụng khỏi iPhone, không thu hồi profile Apple. Không thể hoàn tác.")
         }
         .fileImporter(isPresented: $selectingIPA, allowedContentTypes: [ipaType], allowsMultipleSelection: false) { result in
             if case .success(let urls) = result, let first = urls.first { Task { await model.uploadIPA(first) } }

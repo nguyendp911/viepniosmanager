@@ -139,7 +139,7 @@ $('toolSign').textContent=state.tools.zsign?'Sẵn sàng':'Thiếu zsign';$('too
 const installHtml=x=>`<div class="item"><div class="square">▣</div><div class="details"><div class="name">${esc(x.bundle_id)}</div><div class="sub">Thiết bị: ${esc(x.device_udid)} · ${esc(x.state)}</div><div class="progress"><div class="bar ${expClass(x.expires_at)}" style="width:${Math.max(0,Math.min(100,(days(x.expires_at)||0)/7*100))}%"></div></div>${x.last_error?`<div class="sub" style="color:var(--red)">${esc(x.last_error)}</div>`:''}</div><span class="expiration ${expClass(x.expires_at)}">${expLabel(x.expires_at)}</span></div>`;
 $('quickInstalls').innerHTML=rows.length?rows.slice(0,6).map(installHtml).join(''):'<div class="placeholder">Chưa có bản cài đặt nào được ghi nhận.</div>';
 $('renewList').innerHTML=rows.length?rows.map(x=>installHtml(x)+`<div class="row" style="justify-content:flex-end;padding-bottom:15px"><span class="muted">Tự động: ${x.auto_renew?'Bật':'Tắt'}</span><button class="button small" data-renew="${esc(x.id)}">↻ Gia hạn ngay</button></div>`).join(''):'<div class="placeholder">Chưa có ứng dụng để theo dõi.</div>';
-$('recentJobs').innerHTML=state.jobs.length?state.jobs.slice(0,15).map(x=>`<div class="item"><div class="square" style="font-size:16px">${x.state==='succeeded'?'✓':x.state==='failed'?'!':'…'}</div><div class="details"><div class="name">${esc(x.kind)} <span class="expiration ${x.state==='failed'?'bad':''}">${esc(x.state)}</span></div><div class="sub">${esc(x.created_at)} · ${esc(x.output_json||'Đang xử lý').slice(0,270)}</div></div></div>`).join(''):'<div class="placeholder">Chưa có tác vụ nào.</div>';
+$('recentJobs').innerHTML=state.jobs.length?state.jobs.slice(0,15).map(x=>`<div class="item"><div class="square" style="font-size:16px">${x.state==='succeeded'?'✓':x.state==='failed'?'!':'…'}</div><div class="details"><div class="name">${esc(x.kind)} <span class="expiration ${x.state==='failed'?'bad':''}">${esc(x.state)}</span></div><div class="sub">${esc(x.created_at)} · ${esc(x.output_json||'Đang xử lý').slice(0,270)}</div></div>${x.state==='failed'&&['sign','apple_sign','renew'].includes(x.kind)?'<button class="button small" data-retry-job="'+esc(x.id)+'">Thử lại</button>':''}</div>`).join(''):'<div class="placeholder">Chưa có tác vụ nào.</div>';
 $('libraryCount').textContent=state.ipas.length+' mục';
 $('libraryList').innerHTML=visibleBuilds().length?visibleBuilds().map((x,i)=>{
  const related=state.installations.filter(inst=>inst.source_ipa_id===x.id||inst.current_ipa_id===x.id);
@@ -229,6 +229,15 @@ $('libraryList').addEventListener('click',async (event)=>{
 });
 $('installBtn').onclick=busy(async()=>{if($('resignCheck').checked&&!state.tools.signing_p12)throw Error('Dang chon Ky lai bang P12. Neu dung Apple ID mien phi, hay cai IPA trong SideStore.');let ipa_id=$('ipaChoice').value,udid=$('deviceChoice').value;if(!ipa_id||!udid)throw Error('Chọn IPA và thiết bị');let d=await post('/install',{ipa_id,udid,profile_id:$('profileChoice').value||null,resign:$('resignCheck').checked,auto_renew:$('renewCheck').checked});notify('Đã đưa vào hàng đợi: '+d.job_id.slice(0,8));showSection('dashboard');setTimeout(load,1200)});
 $('signBtn').onclick=busy(async()=>{if(!state.tools.signing_p12)throw Error('Khong can P12? Dung tab Apple ID mien phi va ky trong SideStore. Nut nay chi danh cho P12.');let ipa_id=$('ipaChoice').value,udid=$('deviceChoice').value;if(!ipa_id||!udid)throw Error('Chọn IPA và thiết bị');let d=await post('/sign',{ipa_id,udid,profile_id:$('profileChoice').value||null});notify('Đã gửi tác vụ ký: '+d.job_id.slice(0,8));setTimeout(load,1200)});
+$('recentJobs').addEventListener('click',async event=>{
+ const button=event.target.closest('button[data-retry-job]');if(!button)return;
+ if(!window.confirm('Chạy lại tác vụ ký/gia hạn này? ViePN giới hạn tối đa 3 lần trong 24 giờ; không tự cài lên iPhone.'))return;
+ button.disabled=true;
+ try{
+  const job=await post('/jobs/'+encodeURIComponent(button.dataset.retryJob)+'/retry',{confirm:'RETRY JOB'});
+  notify('Đã đưa vào hàng đợi: '+job.job_id.slice(0,8));await load();
+ }catch(e){notify(e.message,true)}finally{button.disabled=false;}
+});
 $('scanRenew').onclick=busy(async()=>{let r=await post('/renew/check',{});notify(`Đã gửi ${r.queued_job_ids.length} tác vụ gia hạn`);await load()});document.addEventListener('click',busy(async(e)=>{let btn=e.target.closest('[data-renew]');if(!btn)return;let r=await post('/renew',{installation_id:btn.dataset.renew});notify('Đã gửi gia hạn: '+r.job_id.slice(0,8));setTimeout(load,1200)}));
 
 // The free Apple Account mode never sends Apple ID credentials to ViePN.

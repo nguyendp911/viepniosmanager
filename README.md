@@ -22,6 +22,16 @@ Nếu dùng ZIP (không có thư mục `.git`), tải bản mới từ GitHub v�
 3. Mở `http://127.0.0.1:8765`. Access token dashboard nằm trong `%LOCALAPPDATA%\ViePN-iOS-Manager\access_token.txt`.
 4. Tab **Apple ID miễn phí**: chọn IPA, chọn iPhone → **Ký IPA** hoặc **Ký + cài iPhone**. Theo dõi trong **Nhật ký hoạt động**. Không nhập Apple ID/password/2FA vào dashboard.
 
+## Khởi động nhanh và xóa IPA khỏi thư viện (Windows)
+
+Sau khi cài đặt một lần bằng `windows\setup.ps1`, bạn chỉ cần **nhấp đúp** vào file **`Start-ViePN.bat`** ở thư mục gốc dự án (ví dụ `C:\ViePN-iOS-Manager\Start-ViePN.bat`).
+
+- Nếu ViePN đang chạy tại `http://127.0.0.1:8765`, file BAT chỉ mở dashboard.
+- Nếu ViePN chưa chạy, BAT mở cửa sổ PowerShell khởi động server, sau đó mở trình duyệt.
+- Giữ cửa sổ PowerShell chạy để bộ lập lịch gia hạn hoạt động.
+
+Trong tab **Thư viện IPA**, nhấn **🗑 Xóa** bên cạnh IPA cần xóa và xác nhận. Thao tác xóa bản IPA trong thư viện Windows (SQLite + file lưu trên đĩa), **không gỡ ứng dụng khỏi iPhone**. ViePN sẽ từ chối xóa file đang được một ứng dụng theo dõi/gia hạn sử dụng hoặc đang có tác vụ ký/cài chưa hoàn thành; dữ liệu cần thiết cho việc gia hạn được giữ an toàn.
+
 ## Tự gia hạn
 
 - ViePN quét ứng dụng đang bật Auto Renew mỗi 30 phút, ký lại và cài đè khi còn 48 giờ.

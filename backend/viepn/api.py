@@ -16,7 +16,7 @@ from pydantic import BaseModel, Field
 from .config import Settings, load_settings
 from .free_sign import ShareStore
 from .service import Manager
-from .backups import create_backup, list_backups, verify_backup
+from .backups import BackupError, create_backup, list_backups, verify_backup
 from .doctor import doctor
 from .native_sign import status as apple_account_status
 from .apple_auth import AppleAuthFlow
@@ -294,6 +294,10 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             if ids:
                 try:
                     await asyncio.to_thread(create_backup, cfg.root, manager.db, 'before-bulk-delete')
+                except BackupError as exc:
+                    # The message names only the failed operation and a SHA prefix,
+                    # without exposing absolute paths, account names or tokens.
+                    raise HTTPException(409, detail=str(exc)) from exc
                 except PermissionError as exc:
                     raise HTTPException(409, detail=(
                         'Không thể sao lưu IPA trước khi xóa: Windows đang khóa một file '

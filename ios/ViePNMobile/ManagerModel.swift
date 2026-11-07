@@ -68,6 +68,16 @@ final class ManagerModel: ObservableObject {
         }
     }
 
+    func classifyIPA(id: String, channel: String) async {
+        await execute { c in
+            let _: ChannelIPAReply = try await c.patch(
+                "/ipas/\(id)/channel", body: ChannelIPABody(channel: channel),
+                as: ChannelIPAReply.self
+            )
+            return "Đã phân loại bản build"
+        }
+    }
+
     func deleteIPAs(_ ids: [String], all: Bool, force: Bool) async {
         await execute { c in
             let result: DeleteIPAReply = try await c.post(
@@ -137,3 +147,6 @@ private struct DeleteIPAReply: Decodable {
     let filesRemoved: Int
     let trackingRemoved: Int
 }
+
+private struct ChannelIPABody: Encodable { let channel: String }
+private struct ChannelIPAReply: Decodable { let id: String; let channel: String }

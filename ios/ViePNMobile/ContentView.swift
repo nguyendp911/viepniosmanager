@@ -312,7 +312,10 @@ private struct LibraryView: View {
                     Text("Thiết bị nhận diện bởi Windows").font(.subheadline.bold())
                     Spacer()
                     Button {
-                        Task { await model.refreshDevices() }
+                        Task {
+                            await model.refreshDevices()
+                            await model.refreshRemoteDevices()
+                        }
                     } label: {
                         Label("Quét lại", systemImage: "arrow.clockwise")
                     }.buttonStyle(.bordered)
@@ -331,12 +334,25 @@ private struct LibraryView: View {
                 Picker("iPhone", selection: $selectedDevice) {
                     Text("Chọn thiết bị").tag("")
                     ForEach(model.devices) { device in
-                        Text("\(device.name) · \(device.id.prefix(7))").tag(device.id)
+                        Text("\(device.name) · USB/Wi-Fi Apple").tag(device.id)
+                    }
+                    ForEach(model.remoteDevices) { device in
+                        Text("\(device.name) · Tailscale \(device.online ? "online" : "offline")").tag(device.id)
                     }
                 }.tint(.white)
-                    .disabled(model.devices.isEmpty || model.devicesLoading)
-                if !selectedDevice.isEmpty && !model.devices.contains(where: { $0.id == selectedDevice }) {
-                    Text("Thiết bị đã chọn không còn kết nối với Windows. Hãy quét lại.")
+                    .disabled(model.devices.isEmpty && model.remoteDevices.isEmpty)
+                if model.devices.isEmpty && !model.remoteDevices.isEmpty {
+                    Text("iPhone đã kết nối Tailscale, có thể chọn trong danh sách. Để cài IPA trực tiếp qua Apple usbmux vẫn cần ghép đôi thiết bị; Bluetooth không thay thế bước này.")
+                        .font(.footnote).foregroundStyle(Palette.secondary)
+                }
+                if model.remoteDevices.contains(where: { $0.id == selectedDevice }) {
+                    Text("Thiết bị kết nối Tailscale/Bluetooth: đăng ký thành công, nhưng chưa hỗ trợ cài IPA bằng giao thức Apple. Lệnh cài trực tiếp được khóa để tránh báo thành công giả.")
+                        .font(.footnote).foregroundStyle(.orange)
+                }
+                if !selectedDevice.isEmpty &&
+                    !model.devices.contains(where: { $0.id == selectedDevice }) &&
+                    !model.remoteDevices.contains(where: { $0.id == selectedDevice }) {
+                    Text("Thiết bị đã chọn không còn trong danh sách. Hãy quét lại.")
                         .font(.footnote).foregroundStyle(.orange)
                 }
                 Toggle("Ký lại bằng P12/profile", isOn: $resign).tint(Palette.mint)
@@ -348,7 +364,8 @@ private struct LibraryView: View {
                     Label("Gửi lệnh cài lên iPhone", systemImage: "arrow.down.to.line")
                         .frame(maxWidth: .infinity)
                 }.buttonStyle(.borderedProminent)
-                .disabled(selectedIPA.isEmpty || selectedDevice.isEmpty || model.busy)
+                .disabled(selectedIPA.isEmpty || selectedDevice.isEmpty || model.busy ||
+                    !model.devices.contains(where: { $0.id == selectedDevice }))
             }
         }
         .alert("Tên phân biệt bản build", isPresented: $showRenamePrompt) {
@@ -378,7 +395,7 @@ private struct LibraryView: View {
                 await model.refreshDevices()
             }
         }
-        .onChange(of: model.devices.map(\.id)) { ids in
+        .onChange(of: model.devices.map(\.id) + model.remoteDevices.map(\.id)) { ids in
             if !selectedDevice.isEmpty && !ids.contains(selectedDevice) {
                 selectedDevice = ""
             }
@@ -502,6 +519,7 @@ private struct ConnectionView: View {
                     .font(.caption).foregroundStyle(.orange)
             }
             StatusView()
+            RemoteBluetoothPanel(bluetooth: model.bluetooth)
             Panel {
                 Label("Thông báo IPA trên iPhone", systemImage: "bell.badge.fill")
                     .font(.headline).foregroundStyle(Palette.mint)
@@ -553,5 +571,62 @@ private struct ConnectionView: View {
             }
         }
         .onAppear { server = model.serverURL; secret = model.token }
+    }
+}
+
+private struct RemoteBluetoothPanel: View {
+    @EnvironmentObject var model: ManagerModel
+    @ObservedObject var bluetooth: ViePNBLEPeripheral
+
+    var body: some View {
+        Panel {
+            Label("Kết nối không dây ViePN", systemImage: "antenna.radiowaves.left.and.right")
+                .font(.headline).foregroundStyle(Palette.mint)
+            Text("Tailscale HTTPS: đăng ký iPhone với Windows từ bất kỳ đâu. Bluetooth BLE: Windows nhận diện ViePN khi điện thoại ở gần và app đang mở.")
+                .font(.footnote).foregroundStyle(Palette.secondary)
+            Button {
+                Task { await model.registerSelf() }
+            } label: {
+                Label("Đăng ký iPhone qua Tailscale", systemImage: "checkmark.shield")
+                    .frame(maxWidth: .infinity)
+            }.buttonStyle(.borderedProminent)
+                .disabled(!model.isConfigured)
+            if let problem = model.remoteError {
+                Text(problem).font(.caption).foregroundStyle(.orange)
+            }
+            Text("Thiết bị từ xa đã đăng ký: \(model.remoteDevices.count)")
+                .font(.caption).foregroundStyle(Palette.secondary)
+            Toggle("Phát Bluetooth ViePN khi ở gần Windows", isOn: Binding(
+                get: { bluetooth.enabled },
+                set: { enabled in
+                    if enabled {
+                        Task {
+                            await model.registerSelf()
+                            if model.remoteError == nil { bluetooth.enable() }
+                        }
+                    } else {
+                        bluetooth.disable()
+                    }
+                }
+            )).tint(Palette.mint)
+                .disabled(!model.isConfigured)
+            Text(bluetooth.status).font(.caption).foregroundStyle(Palette.secondary)
+            Button {
+                Task { await model.scanBluetoothNearby() }
+            } label: {
+                Label("Quét BLE từ Windows", systemImage: "antenna.radiowaves.left.and.right")
+            }.buttonStyle(.bordered)
+                .disabled(!model.isConfigured || model.bleScanBusy)
+            if model.bleScanBusy { ProgressView("Windows đang quét Bluetooth...") }
+            if let scan = model.nearbyBLE {
+                Text(scan.detail).font(.caption).foregroundStyle(Palette.secondary)
+                ForEach(scan.nearby) { device in
+                    Label(device.name + " · Bluetooth ở gần", systemImage: "bluetooth")
+                        .font(.footnote).foregroundStyle(Palette.mint)
+                }
+            }
+            Text("BLE không truyền mật khẩu, access token hay UDID Apple. Bluetooth không thay thế quyền ký/cài IPA; các lệnh quản lý chạy qua HTTPS Tailscale.")
+                .font(.caption2).foregroundStyle(.orange)
+        }
     }
 }

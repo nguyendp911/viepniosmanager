@@ -68,6 +68,13 @@ class Database:
                     sha256 TEXT NOT NULL,
                     created_at TEXT NOT NULL
                 );
+                CREATE TABLE IF NOT EXISTS remote_devices (
+                    id TEXT PRIMARY KEY,
+                    name TEXT NOT NULL,
+                    ble_token TEXT NOT NULL,
+                    created_at TEXT NOT NULL,
+                    seen_at TEXT NOT NULL
+                );
             ''')
             ipa_columns = {row['name'] for row in db.execute('PRAGMA table_info(ipa)')}
             if 'alias' not in ipa_columns:

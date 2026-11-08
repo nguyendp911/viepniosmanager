@@ -60,9 +60,10 @@ final class ManagerModel: ObservableObject {
     func refreshRemoteDevices() async {
         guard isConfigured else { return }
         do {
-            remoteDevices = try await client.get(
+            let response: RemoteDeviceReply = try await client.get(
                 "/remote/devices", as: RemoteDeviceReply.self
-            ).devices
+            )
+            remoteDevices = response.devices
             remoteError = nil
         } catch {
             remoteError = error.localizedDescription

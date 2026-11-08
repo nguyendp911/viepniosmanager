@@ -18,11 +18,18 @@ from .free_sign import ShareStore
 from .service import Manager
 from .backups import BackupError, create_backup, list_backups, verify_backup
 from .doctor import doctor
+from .remote_devices import register as register_remote_device, inventory as remote_inventory, scan_nearby
 from .native_sign import status as apple_account_status
 from .apple_auth import AppleAuthFlow
 from .tools import ExternalToolError, check_udid, connected_devices, installed_apps
 
 WEB_ROOT = Path(__file__).resolve().parents[2] / 'web'
+
+
+class RegisterRemoteDevice(BaseModel):
+    device_id: str
+    name: str = Field(min_length=1, max_length=64)
+    ble_token: str
 
 
 class InstallPayload(BaseModel):
@@ -185,6 +192,27 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             return {'devices': await asyncio.to_thread(connected_devices)}
         except (ExternalToolError, ValueError) as e:
             raise HTTPException(503, detail=str(e))
+
+    @app.post('/api/remote/devices/register', dependencies=[Depends(auth)])
+    async def register_remote(payload: RegisterRemoteDevice):
+        # Device inventory is created only with the pre-existing authorized
+        # Tailscale HTTPS bearer token, never from untrusted BLE broadcasts.
+        async with manager.lock:
+            try:
+                return register_remote_device(manager.db, payload.device_id,
+                                              payload.name, payload.ble_token)
+            except ValueError as exc:
+                raise HTTPException(400, detail=str(exc)) from exc
+
+    @app.get('/api/remote/devices', dependencies=[Depends(auth)])
+    async def list_remote_devices():
+        return {'devices': remote_inventory(manager.db)}
+
+    @app.post('/api/ble/scan', dependencies=[Depends(auth)])
+    async def scan_ble_devices():
+        # Optional local Bluetooth capability. No UDIDs or bearer tokens
+        # are broadcast. The 7-second discovery runs asynchronously.
+        return await scan_nearby(manager.db)
 
     @app.get('/api/device/{udid}/apps', dependencies=[Depends(auth)])
     async def device_apps(udid: str):

@@ -118,7 +118,21 @@ button:not(:disabled):active{transform:translateY(1px)}
 </div>
 <p class="help">Mỗi bản build có mã SHA, phiên bản, ngày nhập và hạn profile riêng. Bạn có thể đặt tên riêng. Xóa IPA đang theo dõi gia hạn sẽ yêu cầu xác nhận hủy theo dõi; không gỡ ứng dụng trên iPhone.</p>
 <div id="libraryList"></div></section><section class="panel"><h2>Thêm ứng dụng</h2><div class="field"><label class="label">File IPA</label><input class="input" id="ipaFile" type="file" accept=".ipa"></div><button class="button primary" id="uploadIpa">↑ &nbsp; Nhập thư viện</button><hr style="border:0;border-top:1px solid var(--stroke);margin:23px 0"><h2>Ký và cài lên iPhone</h2><div class="field"><label class="label">Chọn IPA</label><select id="ipaChoice" class="input"></select></div><div class="field"><label class="label">Thiết bị</label><select id="deviceChoice" class="input"></select></div><div class="field"><label class="label">Provisioning profile (để trống: tự chọn mới nhất phù hợp)</label><select id="profileChoice" class="input"></select></div><div class="field"><label class="row"><input type="checkbox" id="resignCheck">Ký lại IPA trước khi cài</label></div><div class="field"><label class="row"><input type="checkbox" id="renewCheck" checked>Theo dõi và thử gia hạn trước hạn</label></div><div class="actions"><button class="button primary" id="installBtn">↧ Cài ứng dụng</button><button class="button" id="signBtn">✓ Chỉ ký IPA</button></div><p class="help">Nếu IPA đã được ký hợp lệ, có thể bỏ chọn ký lại. Tất cả tác vụ sẽ trả về trạng thái thực tế trong Nhật ký.</p></section></div></section>
-<section class="drawer" id="devices"><section class="panel"><div class="panel-head"><h2>iPhone / iPad của tôi</h2><button class="button small" id="scanDevices">Quét thiết bị</button></div><div id="deviceList" class="placeholder">Nhấn Quét thiết bị</div><div class="warnbox">Trên Windows, cần Apple Mobile Device Service, ghép đôi USB và xác nhận Tin cậy trên iPhone. Nếu không thấy thiết bị Wi-Fi, kiểm tra dịch vụ Apple và cấu hình ghép đôi.</div></section></section>
+<section class="drawer" id="devices">
+<section class="panel">
+<div class="panel-head"><h2>iPhone / iPad từ xa qua Tailscale</h2><button class="button small" id="scanRemoteDevices">Làm mới</button></div>
+<p class="help">iPhone chạy ViePN tự đăng ký qua HTTPS Tailscale, không cần cáp. Trạng thái online là lần kết nối gần đây, không phải quyền quản lý Apple.</p>
+<div id="remoteDeviceList" class="placeholder">Chưa tải thiết bị từ xa.</div>
+<div class="actions"><button class="button small" id="scanBLE">Quét Bluetooth gần Windows</button></div>
+<div id="bleDeviceList" class="muted">BLE tùy chọn; cần adapter Bluetooth và bật ViePN BLE trên iPhone.</div>
+<div class="warnbox">Tailscale/BLE không thay thế giao thức ký và cài IPA của Apple. Thiết bị từ xa chưa ghép đôi Apple không thể cài trực tiếp qua usbmux.</div>
+</section>
+<section class="panel">
+<div class="panel-head"><h2>Thiết bị Apple đã ghép đôi</h2><button class="button small" id="scanDevices">Quét Apple USB/Wi-Fi</button></div>
+<div id="deviceList" class="placeholder">Nhấn Quét Apple USB/Wi-Fi</div>
+<p class="help">Đây là danh sách riêng dành cho các lệnh cài IPA qua Apple usbmux.</p>
+</section>
+</section>
 <section class="drawer" id="renewals"><div class="split"><section class="panel"><div class="panel-head"><h2>Lịch chữ ký và gia hạn</h2><button class="button small" id="scanRenew">Kiểm tra ngay</button></div><div id="renewList"></div></section><section class="panel"><h2>Chứng chỉ cấp phép</h2><div class="field"><label class="label">Nhập provisioning profile mới (.mobileprovision)</label><input class="input" id="profileFile" type="file" accept=".mobileprovision"></div><button class="button primary" id="uploadProfile">↑ Nhập profile</button><p class="help">Profile mới phải bao gồm UDID thiết bị và phù hợp với bundle ID. P12 và zsign được cấu hình cục bộ trên Windows.</p><div id="profileList"></div><div class="warnbox">Gia hạn 7 ngày không thể tự tạo profile mới nếu thiếu quy trình xác thực Apple. SideStore trên iPhone hỗ trợ làm mới độc lập; hệ thống Windows này tự động thử ký/cài khi đã có profile mới hợp lệ.</div></section></div></section>
 <section class="drawer" id="settings"><div class="split"><section class="panel"><h2>Công cụ hệ thống</h2><div class="tool"><span>pymobiledevice3</span><strong id="statusPM3">–</strong></div><div class="tool"><span>zsign</span><strong id="statusZsign">–</strong></div><div class="tool"><span>Tài liệu ký P12</span><strong id="statusP12">–</strong></div><div class="tool"><span>Gia hạn trước</span><strong id="statusHours">48 giờ</strong></div><p class="help">Các công cụ phải được cài đặt trên Windows theo README, riêng thông tin P12 và mật khẩu không bao giờ được gửi về giao diện.</p></section><section class="panel"><h2>Bảo mật kết nối</h2><p class="help">Token dashboard lưu trong sessionStorage. Để điều khiển ViePN từ iPhone qua Internet, dùng <b>Tailscale Serve (VPN riêng + HTTPS)</b>, không mở cổng 8765 công khai và không dùng Tailscale Funnel.</p><div class="warnbox">Điều khiển từ xa không cho phép nhập mật khẩu, mã 2FA hoặc đổi phiên Apple ID. Các thao tác đó chỉ thực hiện trên Windows localhost.</div><p class="help">Trên Windows, nhấp đúp <code>Start-ViePN.bat</code> — một file khởi chạy tất cả: backend, gateway, Tailscale Serve và dịch vụ gửi cảnh báo. Sau đó dùng URL HTTPS dạng <code>https://may-tinh.tailnet.ts.net</code>. Máy tính cần bật và kết nối Tailscale.</p><a href="https://github.com/nguyendp911/viepniosmanager/blob/main/docs/REMOTE_ACCESS.md" target="_blank" rel="noopener noreferrer" class="button small" style="display:inline-block;text-decoration:none;margin-bottom:18px">Hướng dẫn kết nối từ xa</a><button class="button" id="logout">Đăng xuất dashboard</button><h2 style="margin-top:30px">🔔 Thông báo trên iPhone</h2>
 <p class="help">Cảnh báo chữ ký sắp hết hạn 48 giờ, tác vụ ký/cài/gia hạn thất bại và gia hạn thành công. Vì bản ký Apple ID miễn phí không có APNs, thông báo đẩy đến iPhone qua ứng dụng <a href="https://ntfy.sh/" target="_blank" rel="noopener noreferrer">ntfy</a> (cài riêng). Đây là dịch vụ bên thứ ba, chỉ gửi trạng thái chung, không chứa Apple ID/tên IPA/UDID.</p>
@@ -192,10 +206,32 @@ $('deviceList').innerHTML=state.devices.length?state.devices.map(x=>`<div class=
 function cleanDevices(raw){const arr=Array.isArray(raw)?raw:[];return arr.map(x=>({udid:x.udid||x.UniqueDeviceID||x.Identifier||x.serial||x.serial_number||x.identifier||x.Properties?.SerialNumber||'',name:x.device_name||x.name||x.DeviceName||'',product_type:x.product_type||x.ProductType||''})).filter(x=>x.udid)}
 async function load(){try{let d=await api('/overview');state={...state,...d};render();$('serverDot').classList.remove('off');$('serverStatus').textContent='Đã kết nối';}catch(e){$('serverDot').classList.add('off');$('serverStatus').textContent='Chưa xác thực';notify(e.message,true)}}
 async function scan(){try{let d=await api('/devices');state.devices=cleanDevices(d.devices);render();notify(`Đã quét: ${state.devices.length} thiết bị`)}catch(e){notify(e.message,true)}}
+async function scanRemote(){
+ const res=await api('/remote/devices');
+ state.remoteDevices=res.devices||[];
+ const list=$('remoteDeviceList');
+ list.innerHTML=state.remoteDevices.length?state.remoteDevices.map(d=>
+  '<div class="item"><div class="square">⌁</div><div class="details"><div class="name">'+esc(d.name)+'</div>'+
+  '<div class="sub">Tailscale · '+(d.online?'Đã liên hệ gần đây':'Offline')+' · ID '+esc(d.id.slice(0,8))+'</div>'+
+  '</div><span class="expiration">'+(d.online?'Online':'Offline')+'</span></div>'
+ ).join(''):'<div class="placeholder">Chưa có iPhone đăng ký qua ViePN Tailscale. Mở ứng dụng iOS → Kết nối → Đăng ký iPhone.</div>';
+ $('countDevices').textContent=state.devices.length+state.remoteDevices.length;
+}
+async function scanBluetooth(){
+ const el=$('bleDeviceList');
+ el.textContent='Windows đang quét BLE (khoảng 7 giây)...';
+ try{
+   const r=await post('/ble/scan',{});
+   el.innerHTML='<p class="help">'+esc(r.detail)+'</p>'+
+     (r.nearby||[]).map(d=>'<div class="item"><div class="details"><strong>'+esc(d.name)+
+       '</strong><div class="sub">BLE ở gần · đăng ký qua Tailscale</div></div></div>').join('');
+ }catch(e){el.textContent='Lỗi quét Bluetooth: '+e.message;}
+}
+
 function busy(fn){return async ev=>{const btn=ev.currentTarget;btn.disabled=true;try{await fn(ev)}catch(e){notify(e.message,true)}finally{btn.disabled=false}}}
-document.querySelectorAll('[data-section]').forEach(el=>el.addEventListener('click',()=>{showSection(el.dataset.section);if(el.dataset.section==='free')checkNativeApple().catch(e=>notify(e.message,true));if(el.dataset.section==='settings')loadNotificationSettings();if(el.dataset.section==='settings'){runDoctor().catch(()=>{});refreshBackups().catch(()=>{});}}));document.querySelectorAll('[data-go]').forEach(el=>el.addEventListener('click',()=>showSection(el.dataset.go)));
+document.querySelectorAll('[data-section]').forEach(el=>el.addEventListener('click',()=>{showSection(el.dataset.section);if(el.dataset.section==='free')checkNativeApple().catch(e=>notify(e.message,true));if(el.dataset.section==='settings')loadNotificationSettings();if(el.dataset.section==='settings'){runDoctor().catch(()=>{});refreshBackups().catch(()=>{});}if(el.dataset.section==='devices')scanRemote().catch(e=>notify(e.message,true));}));document.querySelectorAll('[data-go]').forEach(el=>el.addEventListener('click',()=>showSection(el.dataset.go)));
 $('loginBtn').onclick=busy(async()=>{token=$('token').value.trim();let d=await api('/overview');sessionStorage.setItem('viepn_token',token);$('loginShade').classList.add('hide');state={...state,...d};render();scan()});$('token').addEventListener('keydown',e=>{if(e.key==='Enter')$('loginBtn').click()});
-$('reload').onclick=busy(async()=>{await load();await scan()});$('scanDevices').onclick=busy(scan);
+$('reload').onclick=busy(async()=>{await load();await scan()});$('scanDevices').onclick=busy(scan);$('scanRemoteDevices').onclick=busy(scanRemote);$('scanBLE').onclick=busy(scanBluetooth);
 $('quickUpload').onclick=busy(async()=>{await upload($('quickIpa').files[0],'ipas');notify('Đã thêm IPA');await load()});$('uploadIpa').onclick=busy(async()=>{await upload($('ipaFile').files[0],'ipas');notify('Đã thêm IPA');await load()});$('uploadProfile').onclick=busy(async()=>{await upload($('profileFile').files[0],'profiles');notify('Đã thêm profile');await load()});
 
 async function removeIPAs(ids,all=false){

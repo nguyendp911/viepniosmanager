@@ -13,6 +13,7 @@
 <key>LSRequiresIPhoneOS</key><true/>
 <key>UILaunchScreen</key><dict/>
 <key>UISupportedInterfaceOrientations</key><array><string>UIInterfaceOrientationPortrait</string><string>UIInterfaceOrientationLandscapeLeft</string><string>UIInterfaceOrientationLandscapeRight</string></array>
+<key>NSBluetoothAlwaysUsageDescription</key><string>ViePN sử dụng Bluetooth khi bạn bật chế độ tìm thiết bị gần Windows. Không truyền token hoặc thông tin Apple ID qua Bluetooth.</string>
 <key>NSLocalNetworkUsageDescription</key><string>Kết nối ứng dụng với ViePN Manager đang chạy trên Windows trong mạng nội bộ.</string>
 <key>NSAppTransportSecurity</key><dict>
   <!-- Developer-only network convenience. Prefer a trusted HTTPS reverse proxy. -->

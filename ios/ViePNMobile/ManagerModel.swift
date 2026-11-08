@@ -10,6 +10,13 @@ final class ManagerModel: ObservableObject {
     @Published var devicesLoading = false
     @Published var devicesError: String?
     @Published var diagnostic: DoctorReport?
+    @Published var remoteDevices: [RemoteDeviceInfo] = []
+    @Published var nearbyBLE: BLEScanReply?
+    @Published var bleScanBusy = false
+    @Published var remoteError: String?
+    let bluetooth = ViePNBLEPeripheral()
+    @AppStorage("viepnRemoteDeviceID") private var remoteDeviceID = ""
+
     @Published var busy = false
     @Published var notice: String?
     @Published var error: String?
@@ -30,6 +37,50 @@ final class ManagerModel: ObservableObject {
         self.token = secret
         SecureStore.setToken(secret)
         error = nil
+    }
+
+    func registerSelf() async {
+        guard isConfigured else { return }
+        if remoteDeviceID.isEmpty { remoteDeviceID = UUID().uuidString.lowercased() }
+        do {
+            let body = RemoteRegisterBody(
+                device_id: remoteDeviceID, name: "ViePN iPhone",
+                ble_token: bluetooth.token
+            )
+            let _: RemoteRegisterReply = try await client.post(
+                "/remote/devices/register", body: body, as: RemoteRegisterReply.self
+            )
+            remoteError = nil
+            await refreshRemoteDevices()
+        } catch {
+            remoteError = "Đăng ký thiết bị từ xa: " + error.localizedDescription
+        }
+    }
+
+    func refreshRemoteDevices() async {
+        guard isConfigured else { return }
+        do {
+            remoteDevices = try await client.get(
+                "/remote/devices", as: RemoteDeviceReply.self
+            ).devices
+            remoteError = nil
+        } catch {
+            remoteError = error.localizedDescription
+        }
+    }
+
+    func scanBluetoothNearby() async {
+        guard isConfigured else { return }
+        bleScanBusy = true
+        defer { bleScanBusy = false }
+        do {
+            nearbyBLE = try await client.post(
+                "/ble/scan", body: EmptyBody(), as: BLEScanReply.self
+            )
+        } catch {
+            nearbyBLE = BLEScanReply(available: false, nearby: [],
+                                     detail: error.localizedDescription)
+        }
     }
 
     func load() async {
@@ -59,6 +110,7 @@ final class ManagerModel: ObservableObject {
             devicesError = error.localizedDescription
         }
         devicesLoading = false
+        await registerSelf()
     }
 
     func refreshDevices() async {

@@ -20,6 +20,7 @@ private struct Panel<Content: View>: View {
 
 struct ContentView: View {
     @EnvironmentObject var model: ManagerModel
+    @Environment(\.scenePhase) private var scenePhase
     @State private var showSettings = false
 
     var body: some View {
@@ -35,7 +36,21 @@ struct ContentView: View {
         }
         .tint(Palette.blue)
         .background(Palette.bg)
-        .task { await model.load() }
+        .task(id: scenePhase) {
+            guard scenePhase == .active else { return }
+            await model.load()
+            // Heartbeat only while ViePN is foregrounded; cancels when the
+            // scene becomes inactive. No always-on/background iOS promises.
+            while !Task.isCancelled {
+                do {
+                    try await Task.sleep(nanoseconds: 75_000_000_000)
+                } catch {
+                    break
+                }
+                if Task.isCancelled { break }
+                await model.registerSelf()
+            }
+        }
         .overlay(alignment: .top) {
             if let notice = model.notice {
                 Text(notice).font(.footnote).padding(13)

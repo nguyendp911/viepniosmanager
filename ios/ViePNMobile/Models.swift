@@ -77,6 +77,38 @@ struct DoctorReport: Codable {
 
 struct JobResponse: Codable { let jobId: String }
 struct CheckResponse: Codable { let queuedJobIds: [String] }
+struct RemoteDeviceInfo: Codable, Identifiable {
+    let id: String
+    let name: String
+    let seenAt: String
+    let online: Bool
+    let connection: String
+    let applePaired: Bool
+}
+struct RemoteDeviceReply: Decodable {
+    let devices: [RemoteDeviceInfo]
+}
+struct RemoteRegisterBody: Encodable {
+    let device_id: String
+    let name: String
+    let ble_token: String
+}
+struct RemoteRegisterReply: Decodable {
+    let id: String
+    let registered: Bool
+}
+struct BLEFoundDevice: Decodable, Identifiable {
+    let id: String
+    let name: String
+    let nearby: Bool
+    let connection: String
+}
+struct BLEScanReply: Decodable {
+    let available: Bool
+    let nearby: [BLEFoundDevice]
+    let detail: String
+}
+
 struct DeviceInfo: Identifiable {
     let id: String
     let name: String

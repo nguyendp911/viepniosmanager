@@ -1,3 +1,13 @@
+## ViePN 2.2 — Kết nối không dây Tailscale + Bluetooth
+
+**Không cần cáp để iPhone xuất hiện trong danh sách ViePN.** Khi ứng dụng iOS kết nối Tailscale HTTPS, thiết bị tự đăng ký với Windows và hiển thị trong tab **Thiết bị từ xa**. Trên iPhone: **Kết nối → Kết nối không dây ViePN → Đăng ký iPhone**.
+
+Nếu muốn phát hiện thiết bị ở gần qua **Bluetooth BLE**, cài thư viện quét tùy chọn bằng `windows\Enable-ViePN-Bluetooth.bat` (Windows cần adapter BLE), rồi bật **Phát Bluetooth ViePN** trên iPhone khi app đang mở. Windows có nút **Quét Bluetooth gần Windows**.
+
+Trong phần **Thư viện IPA**, danh sách thiết bị phân biệt rõ **Tailscale** và **Apple USB/Wi-Fi pairing**. Tailscale/BLE giúp đăng ký, phát hiện và điều khiển ViePN từ xa, **không cấp quyền cài IPA qua giao thức Apple**. Đối với thiết bị chỉ đăng ký từ xa, nút cài trực tiếp được khóa để tránh hiểu nhầm; việc triển khai IPA không dây cần phương thức OTA/MDM hợp lệ, chưa tích hợp ở đây.
+
+Xem hướng dẫn và giới hạn tại [ViePN 2.2.0 — Remote + Bluetooth BLE](docs/RELEASE_2_2_0.md).
+
 # ViePN iOS Manager 2.1.2 — Apple ID miễn phí, ký trực tiếp trên Windows
 
 ViePN là công cụ Windows + web dashboard để **đọc IPA, kết nối iPhone, xác thực Apple ID miễn phí (2FA), xin provisioning profile, ký IPA, cài lên iPhone và gia hạn trước khi hết 7 ngày**. Không cần cài ứng dụng SideStore/AltStore/iLoader.

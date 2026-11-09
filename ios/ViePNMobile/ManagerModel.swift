@@ -10,6 +10,9 @@ final class ManagerModel: ObservableObject {
     @Published var devicesLoading = false
     @Published var devicesError: String?
     @Published var diagnostic: DoctorReport?
+    @Published var adHocCertificate: AdHocCertificateStatus?
+    @Published var otaLink: AdHocOTALink?
+
     @Published var remoteDevices: [RemoteDeviceInfo] = []
     @Published var nearbyBLE: BLEScanReply?
     @Published var bleScanBusy = false
@@ -112,6 +115,7 @@ final class ManagerModel: ObservableObject {
         }
         devicesLoading = false
         await registerSelf()
+        await loadAdHocCertificate()
     }
 
     func refreshDevices() async {
@@ -175,6 +179,39 @@ final class ManagerModel: ObservableObject {
             return "Đã xóa \(result.deletedIds.count) IPA · hủy theo dõi \(result.trackingRemoved) bản cài" +
                 ((result.pendingFileDeletes ?? 0) > 0 ?
                   " · \(result.pendingFileDeletes ?? 0) file bị Windows khóa, sẽ dọn sau." : "")
+        }
+    }
+
+    func loadAdHocCertificate() async {
+        guard isConfigured else { return }
+        do {
+            adHocCertificate = try await client.get(
+                "/certificates/status", as: AdHocCertificateStatus.self
+            )
+        } catch {
+            self.error = "Certificate Manager: " + error.localizedDescription
+        }
+    }
+
+    func createAdHocOTALink(ipaID: String, deviceIndex: Int) async {
+        guard isConfigured else {
+            error = "Kết nối ViePN Windows qua Tailscale HTTPS trước."
+            return
+        }
+        otaLink = nil
+        do {
+            otaLink = try await client.post(
+                "/ota/prepare",
+                body: AdHocOTARequest(
+                    ipa_id: ipaID, device_index: deviceIndex,
+                    public_base_url: serverURL.trimmingCharacters(in: .whitespacesAndNewlines)
+                ),
+                as: AdHocOTALink.self
+            )
+            error = nil
+            notice = "Liên kết Ad Hoc OTA có hiệu lực 10 phút."
+        } catch {
+            self.error = "OTA: " + error.localizedDescription
         }
     }
 

@@ -145,6 +145,20 @@ button:not(:disabled):active{transform:translateY(1px)}
  <button class="button danger" id="notifyDisable" type="button">Tắt</button>
 </div>
 <p class="help">Trên iPhone: mở ứng dụng ntfy → Subscribe → nhập chính xác topic trên → cho phép thông báo. Việc cấu hình chỉ được làm trên Windows <code>http://127.0.0.1:8765</code>, không cho phép qua Tailscale Remote Gateway.</p>
+<h2 style="margin-top:28px">🔐 Ad Hoc Certificate Manager</h2>
+<p class="help">P12 và profile được nhập <strong>trực tiếp trên máy Windows</strong> bằng file <code>Import-ViePN-Certificate.bat</code>. Không tải khóa riêng hoặc mật khẩu qua trang web hay Tailscale.</p>
+<button class="button" id="certRefresh">Kiểm tra chứng chỉ</button>
+<div id="certStatus" class="muted" style="margin-top:10px">Chưa kiểm tra.</div>
+<h2 style="margin-top:24px">📲 Cài Ad Hoc OTA qua HTTPS</h2>
+<p class="help">Chỉ dành cho IPA có chữ ký Distribution và Ad Hoc profile hợp lệ, cùng thiết bị đã được Apple cấp phép. iOS sẽ tự kiểm tra chữ ký trước khi cài.</p>
+<div class="field"><label class="label" for="otaIpaChoice">Bản IPA đã ký</label><select id="otaIpaChoice" class="input"></select></div>
+<div class="field"><label class="label" for="otaTailscaleURL">Địa chỉ Tailscale Serve HTTPS của Windows</label>
+<input id="otaTailscaleURL" class="input" placeholder="https://ten-may.ten-tailnet.ts.net"></div>
+<div class="field"><label class="label" for="otaDeviceIndex">Thứ tự thiết bị trong profile (bắt đầu từ 1)</label>
+<input id="otaDeviceIndex" class="input" type="number" min="1" max="100" value="1"></div>
+<button class="button primary" id="otaCreate">Tạo liên kết cài OTA (10 phút)</button>
+<div id="otaResult" class="muted" style="margin-top:10px"></div>
+<p class="help">Liên kết là quyền tải tạm thời, không chứa token quản trị. Chỉ chia sẻ cho thiết bị của bạn. Nếu dùng Keyboard Extension phải có profile riêng phù hợp cho extension.</p>
 <h2 style="margin-top:28px">🩺 Connection Doctor</h2><p class="help">Tự kiểm tra backend, gateway, Tailscale, công cụ ký và dung lượng quyền ghi. Không gửi token hoặc thông tin Apple ID.</p><button class="button" id="doctorRun">Kiểm tra kết nối</button><div id="doctorResults" style="margin-top:10px" class="muted">Chưa kiểm tra.</div>
 <h2 style="margin-top:28px">🗄 Sao lưu ViePN</h2><p class="help">Ảnh chụp IPA, profile và SQLite lưu ở thư mục backups trên Windows. Không lưu token, mật khẩu hoặc phiên Apple. Chỉ quản lý/tải bản sao lưu trên localhost; tự tạo trước khi xóa hàng loạt.</p>
 <button class="button primary" id="backupNow">Sao lưu ngay</button><button class="button" id="backupRefresh">Danh sách sao lưu</button>
@@ -201,7 +215,7 @@ $('libraryList').innerHTML=visibleBuilds().length?visibleBuilds().map((x,i)=>{
  <button type="button" class="button small danger" data-delete-ipa="${esc(x.id)}">🗑 Xóa</button></div></div>`;
 }).join(''):'<div class="placeholder">Nhập IPA để bắt đầu.</div>';
 $('profileList').innerHTML=state.profiles.length?state.profiles.map(x=>`<div class="item"><div class="details"><div class="name">${esc(x.filename)}</div><div class="sub">${esc(x.bundle_pattern)} · ${esc(x.team)}<br>${expLabel(x.expires_at)}</div></div></div>`).join(''):'<div class="placeholder">Chưa có profile.</div>';
-const options=(arr,key,label)=>arr.map(x=>`<option value="${esc(x[key])}">${esc(label(x))}</option>`).join('');$('ipaChoice').innerHTML=options(state.ipas,'id',buildLabel);{const previousFreeIpa=$('freeIpaChoice').value;$('freeIpaChoice').innerHTML=options(state.ipas,'id',buildLabel);if(state.ipas.some(x=>x.id===previousFreeIpa))$('freeIpaChoice').value=previousFreeIpa;};$('freeDeviceChoice').innerHTML=options(state.devices,'udid',x=>x.name||x.udid);$('deviceChoice').innerHTML=options(state.devices,'udid',x=>x.name||x.udid);$('profileChoice').innerHTML='<option value="">Tự chọn profile tương thích</option>'+options(state.profiles,'id',x=>x.filename+' · '+expLabel(x.expires_at));
+const options=(arr,key,label)=>arr.map(x=>`<option value="${esc(x[key])}">${esc(label(x))}</option>`).join('');$('ipaChoice').innerHTML=options(state.ipas,'id',buildLabel);$('otaIpaChoice').innerHTML=options(state.ipas,'id',x=>(x.alias||x.name)+' · '+x.bundle_id);{const previousFreeIpa=$('freeIpaChoice').value;$('freeIpaChoice').innerHTML=options(state.ipas,'id',buildLabel);if(state.ipas.some(x=>x.id===previousFreeIpa))$('freeIpaChoice').value=previousFreeIpa;};$('freeDeviceChoice').innerHTML=options(state.devices,'udid',x=>x.name||x.udid);$('deviceChoice').innerHTML=options(state.devices,'udid',x=>x.name||x.udid);$('profileChoice').innerHTML='<option value="">Tự chọn profile tương thích</option>'+options(state.profiles,'id',x=>x.filename+' · '+expLabel(x.expires_at));
 $('deviceList').innerHTML=state.devices.length?state.devices.map(x=>`<div class="item"><div class="square">▥</div><div class="details"><div class="name">${esc(x.name||x.DeviceName||x.device_name||'iPhone / iPad')}</div><div class="sub code">${esc(x.udid)}</div><div class="sub">${esc(x.product_type||x.ProductType||'Thiết bị đã ghép đôi')}</div></div><span class="expiration">Kết nối</span></div>`).join(''):'<div class="placeholder">Không thấy thiết bị nào đang ghép đôi.</div>';}
 function cleanDevices(raw){const arr=Array.isArray(raw)?raw:[];return arr.map(x=>({udid:x.udid||x.UniqueDeviceID||x.Identifier||x.serial||x.serial_number||x.identifier||x.Properties?.SerialNumber||'',name:x.device_name||x.name||x.DeviceName||'',product_type:x.product_type||x.ProductType||''})).filter(x=>x.udid)}
 async function load(){try{let d=await api('/overview');state={...state,...d};render();$('serverDot').classList.remove('off');$('serverStatus').textContent='Đã kết nối';}catch(e){$('serverDot').classList.add('off');$('serverStatus').textContent='Chưa xác thực';notify(e.message,true)}}
@@ -229,7 +243,7 @@ async function scanBluetooth(){
 }
 
 function busy(fn){return async ev=>{const btn=ev.currentTarget;btn.disabled=true;try{await fn(ev)}catch(e){notify(e.message,true)}finally{btn.disabled=false}}}
-document.querySelectorAll('[data-section]').forEach(el=>el.addEventListener('click',()=>{showSection(el.dataset.section);if(el.dataset.section==='free')checkNativeApple().catch(e=>notify(e.message,true));if(el.dataset.section==='settings')loadNotificationSettings();if(el.dataset.section==='settings'){runDoctor().catch(()=>{});refreshBackups().catch(()=>{});}if(el.dataset.section==='devices')scanRemote().catch(e=>notify(e.message,true));}));document.querySelectorAll('[data-go]').forEach(el=>el.addEventListener('click',()=>showSection(el.dataset.go)));
+document.querySelectorAll('[data-section]').forEach(el=>el.addEventListener('click',()=>{showSection(el.dataset.section);if(el.dataset.section==='free')checkNativeApple().catch(e=>notify(e.message,true));if(el.dataset.section==='settings')loadNotificationSettings();if(el.dataset.section==='settings'){runDoctor().catch(()=>{});refreshBackups().catch(()=>{});loadCertificateStatus().catch(()=>{});}if(el.dataset.section==='devices')scanRemote().catch(e=>notify(e.message,true));}));document.querySelectorAll('[data-go]').forEach(el=>el.addEventListener('click',()=>showSection(el.dataset.go)));
 $('loginBtn').onclick=busy(async()=>{token=$('token').value.trim();let d=await api('/overview');sessionStorage.setItem('viepn_token',token);$('loginShade').classList.add('hide');state={...state,...d};render();scan()});$('token').addEventListener('keydown',e=>{if(e.key==='Enter')$('loginBtn').click()});
 $('reload').onclick=busy(async()=>{await load();await scan()});$('scanDevices').onclick=busy(scan);$('scanRemoteDevices').onclick=busy(scanRemote);$('scanBLE').onclick=busy(scanBluetooth);
 $('quickUpload').onclick=busy(async()=>{await upload($('quickIpa').files[0],'ipas');notify('Đã thêm IPA');await load()});$('uploadIpa').onclick=busy(async()=>{await upload($('ipaFile').files[0],'ipas');notify('Đã thêm IPA');await load()});$('uploadProfile').onclick=busy(async()=>{await upload($('profileFile').files[0],'profiles');notify('Đã thêm profile');await load()});
@@ -442,6 +456,34 @@ $('notifyCopy').onclick=busy(async()=>{
  if(!topic)throw Error('Không có topic; chỉ xem tại Windows localhost');
  try{await navigator.clipboard.writeText(topic);notify('Đã sao chép topic');}
  catch(e){$('notifyTopic').select();notify('Hãy sao chép topic trong ô này');}
+});
+async function loadCertificateStatus(){
+ const data=await api('/certificates/status');
+ const el=$('certStatus');
+ el.textContent=data.configured?
+  'Ad Hoc · Phạm vi '+(data.bundle_pattern||'–')+' · Thiết bị: '+(data.devices_count||0)+
+  ' · Hạn: '+(data.expires_at||'–').slice(0,10)+
+  ' · Khớp P12/profile: '+(data.matched?'Có':'Chưa xác định'):
+  'Chưa nhập P12/profile. Hãy chạy Import-ViePN-Certificate.bat trên Windows localhost.';
+}
+$('certRefresh').onclick=busy(loadCertificateStatus);
+$('otaCreate').onclick=busy(async()=>{
+ const ipa=$('otaIpaChoice').value;
+ const base=$('otaTailscaleURL').value.trim();
+ const index=Number($('otaDeviceIndex').value)-1;
+ if(!ipa||!base||!Number.isInteger(index)||index<0)throw Error('Chọn IPA, HTTPS Tailscale và thiết bị hợp lệ.');
+ const res=await post('/ota/prepare',{ipa_id:ipa,public_base_url:base,device_index:index});
+ const el=$('otaResult');
+ el.textContent='';
+ const text=document.createElement('p');
+ text.textContent='Liên kết OTA dành cho thiết bị ...'+res.device_suffix+'; có hiệu lực '+res.expires_in_seconds+' giây.';
+ const input=document.createElement('input');
+ input.className='input';input.readOnly=true;input.value=res.install_url;
+ const copy=document.createElement('button');
+ copy.className='button small';copy.textContent='Sao chép liên kết vào iPhone';
+ copy.onclick=async()=>{await navigator.clipboard.writeText(res.install_url);notify('Đã sao chép liên kết OTA');};
+ el.append(text,input,copy);
+ notify('Đã tạo liên kết OTA. Mở trên iPhone qua Tailscale.');
 });
 async function runDoctor(){
  const data=await api('/doctor');

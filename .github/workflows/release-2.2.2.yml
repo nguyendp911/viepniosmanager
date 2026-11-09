@@ -6,6 +6,8 @@ on:
     paths:
       - '.github/workflows/release-2.2.2.yml'
       - 'VERSION'
+      - 'windows/fetch_signer.py'
+      - 'VERSION'
       - 'windows/install-portable.ps1'
   workflow_dispatch:
 

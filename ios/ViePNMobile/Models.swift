@@ -1,6 +1,30 @@
 import Foundation
 import Security
 
+struct AdHocCertificateStatus: Decodable {
+    let configured: Bool
+    let signingMode: String
+    let matched: Bool?
+    let bundlePattern: String?
+    let devicesCount: Int?
+    let expiresAt: String?
+    let certificateExpiresAt: String?
+    let cmsSignatureVerified: Bool?
+}
+struct AdHocOTARequest: Encodable {
+    let ipa_id: String
+    let device_index: Int
+    let public_base_url: String
+}
+struct AdHocOTALink: Decodable {
+    let installUrl: String
+    let manifestUrl: String
+    let expiresInSeconds: Int
+    let deviceSuffix: String
+    let bundleId: String
+    let note: String
+}
+
 struct IPAInfo: Codable, Identifiable {
     let id: String
     let name: String

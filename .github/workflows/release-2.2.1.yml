@@ -5,6 +5,8 @@ on:
     branches: [main]
     paths:
       - '.github/workflows/release-2.2.1.yml'
+      - 'VERSION'
+      - 'windows/install-portable.ps1'
   workflow_dispatch:
 
 permissions:
@@ -49,7 +51,10 @@ jobs:
           Get-ChildItem windows -Filter '*.ps1' | ForEach-Object {
             $tokens = $null; $errors = $null
             [System.Management.Automation.Language.Parser]::ParseFile($_.FullName, [ref]$tokens, [ref]$errors) | Out-Null
-            if ($errors.Count) { throw "PowerShell parse failed: $($_.Name)" }
+            if ($errors.Count) {
+              $errors | ForEach-Object { Write-Host "::error::$($_.ToString())" }
+              throw "PowerShell parse failed: $($_.Name)"
+            }
           }
           cmd /c "Start-ViePN.bat --self-test"
           if ($LASTEXITCODE -ne 0) { throw 'BAT self-test failed' }

@@ -96,13 +96,34 @@ def install_signed_ipa(file_path: Path, udid: str) -> str:
     return run(pm3() + ['apps', 'install', '--udid', udid, str(file_path)], timeout=480)
 
 
+def resolve_zsign_executable(executable: str = "zsign") -> str | None:
+    """Find explicit override, official bundled signer or executable on PATH."""
+    candidate = str(executable or "zsign").strip()
+    path = Path(candidate)
+    if path.is_file():
+        return str(path.resolve())
+    if path.is_absolute() or "/" in candidate or "\\" in candidate:
+        # Do not silently use a different signer when explicit override is invalid.
+        return None
+    bundled = Path(__file__).resolve().parent / "applekit" / "vendor" / (
+        "zsign.exe" if os.name == "nt" else "zsign"
+    )
+    if bundled.is_file():
+        return str(bundled)
+    return shutil.which(candidate)
+
+
 def sign_with_zsign(executable: str, input_ipa: Path, output_ipa: Path,
                     p12_path: Path, profile_path: Path, password: str) -> str:
     if not p12_path.is_file() or not profile_path.is_file():
         raise ExternalToolError('P12 or .mobileprovision file missing')
-    if not shutil.which(executable) and not Path(executable).is_file():
-        raise ExternalToolError('zsign not configured; see docs/SIGNING.md')
-    args = [executable, '-k', str(p12_path), '-m', str(profile_path), '-o', str(output_ipa)]
+    resolved = resolve_zsign_executable(executable)
+    if not resolved:
+        raise ExternalToolError(
+            'zsign.exe was not found in the ViePN portable package or on PATH. '
+            'Run Update-ViePN.bat to restore the official signer.'
+        )
+    args = [resolved, '-k', str(p12_path), '-m', str(profile_path), '-o', str(output_ipa)]
     if password:
         # WARNING: -p CLI argument is exposed to local process listing while signing.
         # Only run with trusted local Windows account; never log args.

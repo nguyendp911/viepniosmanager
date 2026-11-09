@@ -105,11 +105,12 @@ def resolve_zsign_executable(executable: str = "zsign") -> str | None:
     if path.is_absolute() or "/" in candidate or "\\" in candidate:
         # Do not silently use a different signer when explicit override is invalid.
         return None
-    bundled = Path(__file__).resolve().parent / "applekit" / "vendor" / (
-        "zsign.exe" if os.name == "nt" else "zsign"
-    )
-    if bundled.is_file():
-        return str(bundled)
+    if candidate.lower() in ("zsign", "zsign.exe"):
+        bundled = Path(__file__).resolve().parent / "applekit" / "vendor" / (
+            "zsign.exe" if os.name == "nt" else "zsign"
+        )
+        if bundled.is_file():
+            return str(bundled)
     return shutil.which(candidate)
 
 

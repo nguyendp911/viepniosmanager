@@ -26,7 +26,9 @@ from .apple_auth import AppleAuthFlow
 from .tools import ExternalToolError, check_udid, connected_devices, installed_apps
 from .ipa import parse_provision
 
-WEB_ROOT = Path(__file__).resolve().parents[2] / 'web'
+REPOSITORY_ROOT = Path(__file__).resolve().parents[2]
+WEB_ROOT = REPOSITORY_ROOT / 'web'
+APP_VERSION = (REPOSITORY_ROOT / 'VERSION').read_text(encoding='utf-8').strip()
 
 
 class RegisterRemoteDevice(BaseModel):
@@ -136,7 +138,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         yield
         await manager.stop()
 
-    app = FastAPI(title='ViePN iOS Manager', version='2.2.0', lifespan=lifespan,
+    app = FastAPI(title='ViePN iOS Manager', version=APP_VERSION, lifespan=lifespan,
                   docs_url=None, redoc_url=None, openapi_url=None)
     app.state.manager = manager
 
@@ -176,7 +178,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
 
     @app.get('/api/health')
     def health():
-        return {'ok': True, 'service': 'ViePN iOS Manager', 'version': '2.2.0'}
+        return {'ok': True, 'service': 'ViePN iOS Manager', 'version': APP_VERSION}
 
     @app.get('/api/overview', dependencies=[Depends(auth)])
     def overview():

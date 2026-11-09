@@ -276,6 +276,17 @@ class Manager:
         if not original:
             raise ValueError('IPA not found')
         if certificate_metadata(self.cfg.root).get('configured') and not profile_id:
+            # For Ad Hoc embedded extensions, a separate provisioning profile
+            # is needed per extension bundle ID. Never incorrectly reuse the
+            # main application's explicit App ID for a keyboard extension.
+            import zipfile
+            with zipfile.ZipFile(original['file_path']) as source_zip:
+                if any('.appex/Info.plist' in name for name in source_zip.namelist()):
+                    raise ValueError(
+                        'Ad Hoc IPA has an extension: import a separate provisioning '
+                        'profile for each extension. Certificate Manager does not '
+                        're-sign extensions with the main app profile.'
+                    )
             # Certificate Manager stores P12 and password locally under the
             # current Windows user DPAPI. Require explicit bundle/UDID match.
             material = adhoc_preflight(self.cfg.root, original['bundle_id'], udid)

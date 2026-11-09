@@ -193,6 +193,18 @@ final class ManagerModel: ObservableObject {
         }
     }
 
+    func signAdHocWithoutUSB(ipaID: String, deviceIndex: Int) async {
+        await execute { c in
+            let result: JobResponse = try await c.post(
+                "/adhoc/sign",
+                body: AdHocSignRequest(ipa_id: ipaID, device_index: deviceIndex),
+                as: JobResponse.self
+            )
+            return "Đang ký Ad Hoc (không cần USB): " + String(result.jobId.prefix(8)) +
+                ". Sau khi ký xong, tải lại Thư viện và chọn IPA mới để cài OTA."
+        }
+    }
+
     func createAdHocOTALink(ipaID: String, deviceIndex: Int) async {
         guard isConfigured else {
             error = "Kết nối ViePN Windows qua Tailscale HTTPS trước."

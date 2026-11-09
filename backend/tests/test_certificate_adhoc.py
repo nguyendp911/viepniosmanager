@@ -63,8 +63,10 @@ def test_adhoc_p12_key_matches_profile_and_enforces_scope():
         inspect_pair(p12, profile, "incorrect")
     with pytest.raises(ValueError, match="NOT included"):
         inspect_pair(p12, synthetic_pair()[1], "test-p12-password")
+    debug_profile = plistlib.loads(profile)
+    debug_profile["Entitlements"]["get-task-allow"] = True
     with pytest.raises(ValueError, match="Ad Hoc"):
-        inspect_pair(p12, synthetic_pair(allow_debug=True)[1], "test-p12-password")
+        inspect_pair(p12, plistlib.dumps(debug_profile), "test-p12-password")
 
 
 def test_ota_accepts_only_private_tailscale_https():

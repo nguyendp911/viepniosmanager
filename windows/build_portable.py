@@ -8,10 +8,12 @@ from __future__ import annotations
 import hashlib
 import json
 import zipfile
+import os
 from pathlib import Path
 
 
 ROOT = Path(__file__).resolve().parents[1]
+VERSION = (ROOT / "VERSION").read_text(encoding="utf-8").strip()
 DIST = ROOT / "dist"
 DIRECTORIES = ("backend", "web", "windows", "ios", "docs")
 TOP_LEVEL = ("Start-ViePN.bat", "Install-ViePN.bat", "Update-ViePN.bat", "README.md")
@@ -43,7 +45,7 @@ def build() -> tuple[Path, Path]:
     for directory in DIRECTORIES:
         members.extend((ROOT / directory).rglob("*"))
     members = sorted([p for p in members if allowed(p)], key=lambda p: p.as_posix())
-    manifest = {"schema": 1, "version": "2.2.0", "files": {}}
+    manifest = {"schema": 1, "version": VERSION, "files": {}}
     with zipfile.ZipFile(archive_path, "w", zipfile.ZIP_DEFLATED, compresslevel=6) as archive:
         for path in members:
             name = path.relative_to(ROOT).as_posix()

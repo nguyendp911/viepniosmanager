@@ -22,7 +22,7 @@ import tempfile
 from pathlib import Path
 
 from .config import app_data
-from .ipa import inspect_ipa
+from .ipa import inspect_ipa, parse_provision, profile_compatible
 from .applekit import gsa, ipa as ipa_tools, provision, signing
 
 CONSENT_FILE = "apple-connection.json"
@@ -297,6 +297,19 @@ def _sign_free_ipa_impl(source: Path, destination: Path, udid: str,
                 if nested_info.get("CFBundleIdentifier") != new_bundle:
                     destination.unlink(missing_ok=True)
                     raise NativeSigningError("Signed extension bundle ID mismatch.")
+                try:
+                    embedded_profile = parse_provision(signed.read(provision_path))
+                except (ValueError, TypeError, KeyError) as exc:
+                    destination.unlink(missing_ok=True)
+                    raise NativeSigningError(
+                        "Signed extension provisioning profile is unreadable: " + extension_path
+                    ) from exc
+                if not profile_compatible(embedded_profile, new_bundle, udid):
+                    destination.unlink(missing_ok=True)
+                    raise NativeSigningError(
+                        "Extension profile does not authorize its bundle ID or this device: "
+                        + extension_path
+                    )
 
     metadata = inspect_ipa(destination)
     if not metadata.get("signed_candidate"):

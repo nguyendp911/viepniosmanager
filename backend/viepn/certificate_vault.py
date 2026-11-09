@@ -11,13 +11,12 @@ import json
 import os
 import plistlib
 import re
-import shutil
-import subprocess
 import tempfile
 from datetime import datetime, timezone
 from pathlib import Path
 
 from cryptography import x509
+from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.serialization import (
     Encoding, PublicFormat, pkcs12,
 )
@@ -63,8 +62,8 @@ def inspect_pair(p12: bytes, profile_blob: bytes, password: str) -> dict:
     certs = profile.get("DeveloperCertificates") or []
     if not any(
         isinstance(item, bytes) and x509.load_der_x509_certificate(item).fingerprint(
-            __import__('cryptography').hazmat.primitives.hashes.SHA256()
-        ) == cert.fingerprint(__import__('cryptography').hazmat.primitives.hashes.SHA256())
+            hashes.SHA256()
+        ) == cert.fingerprint(hashes.SHA256())
         for item in certs
     ):
         raise ValueError("P12 certificate is NOT included in this provisioning profile")

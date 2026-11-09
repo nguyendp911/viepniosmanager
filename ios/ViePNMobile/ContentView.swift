@@ -1,5 +1,6 @@
 import SwiftUI
 import UniformTypeIdentifiers
+import UIKit
 
 private enum Palette {
     static let bg = Color(red: 0.045, green: 0.073, blue: 0.13)
@@ -208,6 +209,7 @@ private struct LibraryView: View {
     @EnvironmentObject var model: ManagerModel
     @State private var selectingIPA = false
     @State private var selectedIPA = ""
+    @State private var selectedAdHocDeviceIndex = 0
     @State private var selectedDevice = ""
     @State private var resign = false
     @State private var autoRenew = true
@@ -313,6 +315,60 @@ private struct LibraryView: View {
                     }
                 } else {
                     Text("Chưa nhập IPA").foregroundStyle(Palette.secondary)
+                }
+            }
+            Panel {
+                Label("Ad Hoc OTA · Cài không dây", systemImage: "antenna.radiowaves.left.and.right")
+                    .font(.headline).foregroundStyle(Palette.mint)
+                Text("Chỉ hoạt động với IPA đã ký đúng chứng chỉ Distribution và profile Ad Hoc cho thiết bị. Không cần USB để tải qua HTTPS Tailscale. iOS tự kiểm tra chữ ký và yêu cầu xác nhận cài.")
+                    .font(.caption).foregroundStyle(Palette.secondary)
+                if let cert = model.adHocCertificate, cert.configured {
+                    Text("Chứng chỉ: \(cert.signingMode.uppercased()) · \(cert.bundlePattern ?? "Không rõ App ID")")
+                        .font(.footnote)
+                    Text("Thiết bị được cấp: \(cert.devicesCount ?? 0) · Hạn: \(String((cert.expiresAt ?? "").prefix(10)))")
+                        .font(.caption).foregroundStyle(Palette.secondary)
+                    if (cert.devicesCount ?? 0) > 1 {
+                        Picker("Thiết bị Ad Hoc", selection: $selectedAdHocDeviceIndex) {
+                            ForEach(Array(0..<min(cert.devicesCount ?? 0, 100)), id: \.self) { i in
+                                Text("Thiết bị trong profile #\(i + 1)").tag(i)
+                            }
+                        }.tint(.white)
+                    }
+                    Button {
+                        Task { await model.createAdHocOTALink(
+                            ipaID: selectedIPA, deviceIndex: selectedAdHocDeviceIndex
+                        ) }
+                    } label: {
+                        Label("Tạo liên kết cài OTA (10 phút)", systemImage: "link.badge.plus")
+                            .frame(maxWidth: .infinity)
+                    }.buttonStyle(.borderedProminent)
+                        .disabled(selectedIPA.isEmpty || model.busy)
+                    if let link = model.otaLink {
+                        Text("Dành cho thiết bị kết thúc bằng ...\(link.deviceSuffix)")
+                            .font(.caption).foregroundStyle(Palette.mint)
+                        Button {
+                            if let url = URL(string: link.installUrl) {
+                                UIApplication.shared.open(url)
+                            }
+                        } label: {
+                            Label("Mở trình cài IPA không dây", systemImage: "square.and.arrow.down")
+                                .frame(maxWidth: .infinity)
+                        }.buttonStyle(.borderedProminent)
+                        Button {
+                            UIPasteboard.general.string = link.installUrl
+                            model.notice = "Đã sao chép liên kết OTA (có hạn 10 phút)."
+                        } label: {
+                            Label("Sao chép liên kết để mở trong Safari", systemImage: "doc.on.doc")
+                        }.buttonStyle(.bordered)
+                        Text("Liên kết có mã truy cập tạm thời; chỉ chia sẻ với thiết bị được phép. Không nhầm với cài Apple usbmux.")
+                            .font(.caption2).foregroundStyle(.orange)
+                    }
+                } else {
+                    Text("Chưa nhập bộ P12 + mobileprovision trên Windows. Hãy chạy Import-ViePN-Certificate.bat tại máy Windows.")
+                        .font(.footnote).foregroundStyle(.orange)
+                    Button("Tải lại trạng thái chứng chỉ") {
+                        Task { await model.loadAdHocCertificate() }
+                    }.buttonStyle(.bordered)
                 }
             }
             Panel {

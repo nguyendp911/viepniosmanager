@@ -35,7 +35,7 @@ foreach ($port in @(8765,8766)) {
     }
 }
 $Manifest = Get-Content -LiteralPath $ManifestPath -Raw -Encoding UTF8 | ConvertFrom-Json
-if ($Manifest.schema -ne 1 -or ([string]$Manifest.version) -notmatch '^[0-9]+\.[0-9]+\.[0-9]+
+if ($Manifest.schema -ne 1 -or ([string]$Manifest.version) -notmatch '^[0-9]+\.[0-9]+\.[0-9]+$') {
     throw 'Unsupported or unexpected ViePN package manifest.'
 }
 $Entries = @($Manifest.files.PSObject.Properties)
@@ -189,7 +189,7 @@ try {
     throw
 }
 Write-Host ''
-Write-Host "ViePN 2.1.2 source installed at $Destination" -ForegroundColor Green
+Write-Host "ViePN $($Manifest.version) source installed at $Destination" -ForegroundColor Green
 Write-Host "Previous code backup: $backupPath"
 Write-Host 'Your %%LOCALAPPDATA%% ViePN data, IPA files, sessions and token were not overwritten.'
 Write-Host 'Start ViePN by double-clicking Start-ViePN.bat after setup.'

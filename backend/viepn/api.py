@@ -23,7 +23,7 @@ from .adhoc_ota import OTAShareStore, inspect_adhoc_ipa, validate_base
 from .remote_devices import register as register_remote_device, inventory as remote_inventory, scan_nearby
 from .native_sign import status as apple_account_status
 from .apple_auth import AppleAuthFlow
-from .tools import ExternalToolError, check_udid, connected_devices, installed_apps
+from .tools import ExternalToolError, check_udid, connected_devices, installed_apps, resolve_zsign_executable
 from .ipa import parse_provision
 
 REPOSITORY_ROOT = Path(__file__).resolve().parents[2]
@@ -198,8 +198,11 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             'ipas': apps, 'installations': installs, 'profiles': profiles,
             'jobs': jobs, 'events': events,
             'tools': {'pymobiledevice3': find_spec('pymobiledevice3') is not None,
-                      'zsign': bool(which(cfg.signer) or Path(cfg.signer).is_file()),
-                      'signing_p12': bool(cfg.signing_p12 and Path(cfg.signing_p12).is_file())},
+                      'zsign': resolve_zsign_executable(cfg.signer) is not None,
+                      'signing_p12': bool(
+                          (cfg.signing_p12 and Path(cfg.signing_p12).is_file())
+                          or vault_metadata(cfg.root).get('configured')
+                      )},
             'renewal_hours': cfg.renewal_hours,
         }
 

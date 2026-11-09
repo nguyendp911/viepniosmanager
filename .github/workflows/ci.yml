@@ -52,6 +52,7 @@ jobs:
       - name: Windows portable install smoke test
         shell: pwsh
         run: |
+          python windows/fetch_signer.py
           python windows/build_portable.py
           $package = Join-Path $env:RUNNER_TEMP 'ViePN-Package'
           $destination = Join-Path $env:RUNNER_TEMP 'ViePN-Installed'
@@ -90,7 +91,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Build checksum-verified portable distribution
-        run: python windows/build_portable.py
+        run: |
+          python windows/fetch_signer.py
+          python windows/build_portable.py
       - name: Audit ZIP file manifest and privacy
         run: |
           python - <<'PY'

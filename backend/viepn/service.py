@@ -14,6 +14,7 @@ from .db import Database, utcnow
 from .ipa import inspect_ipa, parse_provision, profile_compatible, sha256_file
 from .tools import connected_devices, install_signed_ipa, sign_with_zsign
 from .native_sign import sign_free_ipa
+from .certificate_vault import metadata as certificate_metadata, preflight as adhoc_preflight
 from .notifications import NotificationService
 
 
@@ -274,18 +275,32 @@ class Manager:
         original = self.db.one('SELECT * FROM ipa WHERE id=?', (ipa_id,))
         if not original:
             raise ValueError('IPA not found')
-        if not self.cfg.signing_p12:
-            raise ValueError('Configure VIEPN_SIGN_P12 and VIEPN_SIGN_PASSWORD first')
-        profile = self.get_profile(profile_id, original['bundle_id'], udid, previous_expiry)
+        if certificate_metadata(self.cfg.root).get('configured') and not profile_id:
+            # Certificate Manager stores P12 and password locally under the
+            # current Windows user DPAPI. Require explicit bundle/UDID match.
+            material = adhoc_preflight(self.cfg.root, original['bundle_id'], udid)
+            p12, profile_path, password = material['p12'], material['profile'], material['password']
+            expected_expiry = material['expires_at']
+        else:
+            if not self.cfg.signing_p12:
+                raise ValueError('Import P12/profile locally or configure VIEPN_SIGN_P12')
+            profile = self.get_profile(profile_id, original['bundle_id'], udid, previous_expiry)
+            p12, profile_path, password = (Path(self.cfg.signing_p12),
+                Path(profile['file_path']), self.cfg.signing_password)
+            expected_expiry = profile['expires_at']
+        if previous_expiry and datetime.fromisoformat(expected_expiry) <= datetime.fromisoformat(previous_expiry):
+            raise ValueError('No newer Ad Hoc profile: a certificate alone cannot renew a profile')
         temp = self.cfg.root / 'incoming' / f'{uuid.uuid4().hex}.ipa'
         try:
             await asyncio.to_thread(sign_with_zsign, self.cfg.signer,
-                Path(original['file_path']), temp, Path(self.cfg.signing_p12),
-                Path(profile['file_path']), self.cfg.signing_password)
+                Path(original['file_path']), temp, p12, profile_path, password)
             metadata = inspect_ipa(temp)
             if not metadata['signed_candidate'] or metadata['bundle_id'] != original['bundle_id']:
                 raise ValueError('Signer output lacks matching embedded provisioning metadata')
-            if metadata['profile_expires'] != profile['expires_at']:
+            # Compare profile expiry to actual selected profile, not the
+            # certificate expiry (which may be shorter).
+            actual_expiry = parse_provision(profile_path.read_bytes())['expires_at']
+            if metadata['profile_expires'] != actual_expiry:
                 raise ValueError('Signer output has an unexpected provisioning expiration')
             return self.add_ipa(temp)
         finally:

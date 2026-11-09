@@ -47,7 +47,7 @@ foreach ($entry in $Entries) {
         throw "Unsafe package path: $rel"
     }
     $part = $rel.Split('/')[0]
-    if ($part -notin $approved -and $rel -notin @('README.md','Start-ViePN.bat','Install-ViePN.bat','Update-ViePN.bat')) {
+    if ($part -notin $approved -and $rel -notin @('README.md','VERSION','Start-ViePN.bat','Install-ViePN.bat','Update-ViePN.bat','Import-ViePN-Certificate.bat')) {
         throw "Unapproved package path: $rel"
     }
     $file = Join-Path $Source ($rel.Replace('/', '\'))

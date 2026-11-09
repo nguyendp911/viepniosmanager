@@ -25,6 +25,7 @@ _RULES = (
     ("GET", re.compile(r"^/api/doctor$")),
     ("GET", re.compile(r"^/api/certificates/status$")),
     ("POST", re.compile(r"^/api/ota/prepare$")),
+    ("POST", re.compile(r"^/api/adhoc/sign$")),
     ("GET", re.compile(r"^/api/ota/manifest/[A-Za-z0-9_-]{40,128}$")),
     ("GET", re.compile(r"^/api/ota/package/[A-Za-z0-9_-]{40,128}$")),
     ("GET", re.compile(r"^/api/devices$")),

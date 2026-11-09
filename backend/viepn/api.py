@@ -10,7 +10,7 @@ from pathlib import Path
 from urllib.parse import urlsplit
 
 from fastapi import Depends, FastAPI, File, Header, HTTPException, UploadFile, Request
-from fastapi.responses import FileResponse
+from fastapi.responses import Response, FileResponse
 from pydantic import BaseModel, Field
 
 from .config import Settings, load_settings
@@ -18,6 +18,8 @@ from .free_sign import ShareStore
 from .service import Manager
 from .backups import BackupError, create_backup, list_backups, verify_backup
 from .doctor import doctor
+from .certificate_vault import metadata as vault_metadata
+from .adhoc_ota import OTAShareStore, inspect_adhoc_ipa, validate_base
 from .remote_devices import register as register_remote_device, inventory as remote_inventory, scan_nearby
 from .native_sign import status as apple_account_status
 from .apple_auth import AppleAuthFlow
@@ -30,6 +32,12 @@ class RegisterRemoteDevice(BaseModel):
     device_id: str
     name: str = Field(min_length=1, max_length=64)
     ble_token: str
+
+
+class OTARequest(BaseModel):
+    ipa_id: str
+    device_index: int = Field(ge=0, le=100)
+    public_base_url: str = Field(min_length=15, max_length=255)
 
 
 class InstallPayload(BaseModel):
@@ -113,6 +121,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     cfg = settings or load_settings()
     manager = Manager(cfg)
     ipa_shares = ShareStore(ttl_seconds=600)
+    ota_shares = OTAShareStore(ttl_seconds=600)
     apple_auth = AppleAuthFlow()
 
     @asynccontextmanager
@@ -213,6 +222,52 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         # Optional local Bluetooth capability. No UDIDs or bearer tokens
         # are broadcast. The 7-second discovery runs asynchronously.
         return await scan_nearby(manager.db)
+
+    @app.get('/api/certificates/status', dependencies=[Depends(auth)])
+    def certificate_status():
+        # Exposes only non-secret metadata, never raw P12, profile contents,
+        # DPAPI blob or password. Import only via Windows local CLI.
+        try:
+            return vault_metadata(cfg.root)
+        except (ValueError, OSError):
+            return {"configured": False, "signing_mode": "invalid_local_vault"}
+
+    @app.post('/api/ota/prepare', dependencies=[Depends(auth)])
+    async def prepare_adhoc_ota(payload: OTARequest):
+        # A valid private Tailscale HTTPS host is required; no third-party
+        # download hosts, arbitrary uploads, or publicly forwarded ports.
+        try:
+            validate_base(payload.public_base_url)
+            record = manager.db.one('SELECT * FROM ipa WHERE id=?', (payload.ipa_id,))
+            if not record:
+                raise HTTPException(404, detail='IPA not found')
+            result = await asyncio.to_thread(
+                inspect_adhoc_ipa, Path(record['file_path']), payload.device_index, cfg.root
+            )
+            return ota_shares.create(Path(record['file_path']), payload.public_base_url, result)
+        except (ValueError, OSError, RuntimeError) as exc:
+            # Fail closed. No P12 details, password, UDID or local path in response.
+            raise HTTPException(409, detail=str(exc)) from None
+
+    @app.get('/api/ota/manifest/{token}')
+    def adhoc_manifest(token: str):
+        blob = ota_shares.manifest(token)
+        if blob is None:
+            raise HTTPException(404, detail='OTA link expired or invalid')
+        return Response(content=blob, media_type='application/xml',
+                        headers={'Cache-Control': 'no-store', 'X-Content-Type-Options': 'nosniff',
+                                 'Referrer-Policy': 'no-referrer'})
+
+    @app.get('/api/ota/package/{token}')
+    def adhoc_package(token: str):
+        path = ota_shares.package(token)
+        if path is None:
+            raise HTTPException(404, detail='OTA link expired or invalid')
+        return FileResponse(path, filename='ViePN-AdHoc.ipa',
+                            media_type='application/octet-stream',
+                            headers={'Cache-Control': 'no-store',
+                                     'Referrer-Policy': 'no-referrer',
+                                     'X-Content-Type-Options': 'nosniff'})
 
     @app.get('/api/device/{udid}/apps', dependencies=[Depends(auth)])
     async def device_apps(udid: str):

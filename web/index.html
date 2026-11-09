@@ -156,6 +156,7 @@ button:not(:disabled):active{transform:translateY(1px)}
 <input id="otaTailscaleURL" class="input" placeholder="https://ten-may.ten-tailnet.ts.net"></div>
 <div class="field"><label class="label" for="otaDeviceIndex">Thứ tự thiết bị trong profile (bắt đầu từ 1)</label>
 <input id="otaDeviceIndex" class="input" type="number" min="1" max="100" value="1"></div>
+<button class="button" id="adhocSign">Ký IPA Ad Hoc không cần USB</button>
 <button class="button primary" id="otaCreate">Tạo liên kết cài OTA (10 phút)</button>
 <div id="otaResult" class="muted" style="margin-top:10px"></div>
 <p class="help">Liên kết là quyền tải tạm thời, không chứa token quản trị. Chỉ chia sẻ cho thiết bị của bạn. Nếu dùng Keyboard Extension phải có profile riêng phù hợp cho extension.</p>
@@ -467,6 +468,14 @@ async function loadCertificateStatus(){
   'Chưa nhập P12/profile. Hãy chạy Import-ViePN-Certificate.bat trên Windows localhost.';
 }
 $('certRefresh').onclick=busy(loadCertificateStatus);
+$('adhocSign').onclick=busy(async()=>{
+ const ipa=$('otaIpaChoice').value;
+ const idx=Number($('otaDeviceIndex').value)-1;
+ if(!ipa||!Number.isInteger(idx)||idx<0)throw Error('Chọn IPA và thiết bị trong Ad Hoc profile.');
+ const r=await post('/adhoc/sign',{ipa_id:ipa,device_index:idx});
+ notify('Đang ký Ad Hoc: '+r.job_id.slice(0,8)+'. Xem tác vụ, sau đó chọn IPA mới được ký để tạo OTA.');
+ await load();
+});
 $('otaCreate').onclick=busy(async()=>{
  const ipa=$('otaIpaChoice').value;
  const base=$('otaTailscaleURL').value.trim();

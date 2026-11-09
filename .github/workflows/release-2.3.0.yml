@@ -159,6 +159,10 @@ jobs:
               assert "backend/viepn/applekit/vendor/zsign.exe" in z.namelist(), "Signer executable not packaged"
               assert "Import-ViePN-Certificate.bat" in z.namelist(), "Local certificate importer missing"
               assert "VERSION" in z.namelist(), "Canonical version missing"
+              assert "backend/viepn/certificate_vault.py" in z.namelist()
+              assert "backend/viepn/adhoc_ota.py" in z.namelist()
+              assert not any(path.endswith((".p12", ".mobileprovision", ".dpapi"))
+                             or "/certificates/" in path for path in z.namelist()), "Private signing material in public release"
               manifest=json.loads(z.read("manifest.json"))
               assert manifest["version"]=="2.3.0"
               for path, digest in manifest["files"].items():

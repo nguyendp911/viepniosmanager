@@ -16,7 +16,7 @@ ROOT = Path(__file__).resolve().parents[1]
 VERSION = (ROOT / "VERSION").read_text(encoding="utf-8").strip()
 DIST = ROOT / "dist"
 DIRECTORIES = ("backend", "web", "windows", "ios", "docs")
-TOP_LEVEL = ("Start-ViePN.bat", "Install-ViePN.bat", "Update-ViePN.bat", "README.md")
+TOP_LEVEL = ("Start-ViePN.bat", "Install-ViePN.bat", "Update-ViePN.bat", "Import-ViePN-Certificate.bat", "README.md", "VERSION")
 IGNORED = {".git", ".venv", "__pycache__", ".pytest_cache", ".DS_Store",
            "build", "artifacts", "dist", "node_modules", "incoming", "session"}
 ALLOWED_SUFFIXES = {".py", ".txt", ".md", ".ps1", ".bat", ".html", ".swift",
@@ -34,7 +34,7 @@ def allowed(path: Path) -> bool:
         return False
     if rel.as_posix() == "backend/viepn/applekit/vendor/zsign.exe":
         return True
-    if path.suffix.lower() not in ALLOWED_SUFFIXES:
+    if path.name != "VERSION" and path.suffix.lower() not in ALLOWED_SUFFIXES:
         return False
     return True
 

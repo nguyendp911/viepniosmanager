@@ -228,7 +228,12 @@ def _sign_free_ipa_impl(source: Path, destination: Path, udid: str,
     )
     extension_assets = []
     for extension_path, extension_bundle in extensions:
-        new_bundle = provision.team_scoped_bundle_id(extension_bundle)
+        if not extension_bundle.startswith(original_bundle + "."):
+            raise NativeSigningError(
+                "Extension bundle ID must start with containing app bundle ID: " + extension_bundle
+            )
+        extension_suffix = extension_bundle[len(original_bundle) + 1:]
+        new_bundle = target_bundle + "." + extension_suffix
         extension_assets.append((extension_path, new_bundle, provision.ensure_signing_assets(
             new_bundle, udid, app_name=extension_bundle[:70], app_groups=app_groups,
         )))
@@ -294,9 +299,9 @@ def _sign_free_ipa_impl(source: Path, destination: Path, udid: str,
                     destination.unlink(missing_ok=True)
                     raise NativeSigningError("Signed IPA is missing a keyboard extension or its profile.")
                 nested_info = plistlib.loads(signed.read(extension_path))
-                if nested_info.get("CFBundleIdentifier") != new_bundle:
+                if nested_info.get("CFBundleIdentifier") != new_bundle or not new_bundle.startswith(target_bundle + "."):
                     destination.unlink(missing_ok=True)
-                    raise NativeSigningError("Signed extension bundle ID mismatch.")
+                    raise NativeSigningError("Signed extension bundle ID mismatch or invalid app prefix.")
                 try:
                     embedded_profile = parse_provision(signed.read(provision_path))
                 except (ValueError, TypeError, KeyError) as exc:

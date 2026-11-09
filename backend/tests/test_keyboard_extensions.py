@@ -60,7 +60,7 @@ def test_native_sign_uses_separate_extension_profiles(tmp_path, monkeypatch):
 
     monkeypatch.setattr(native.provision, "ensure_signing_assets", fake_assets)
     monkeypatch.setattr(native.signing, "resolve_zsign", lambda: "zsign")
-    monkeypatch.setattr(native, "parse_provision", lambda data: {"bundle_pattern": "com.example.demo.keyboard.TEAM123", "devices": ["a" * 40], "expires_at": "2030-01-01T00:00:00+00:00"})
+    monkeypatch.setattr(native, "parse_provision", lambda data: {"bundle_pattern": "com.example.demo.TEAM123.keyboard", "devices": ["a" * 40], "expires_at": "2030-01-01T00:00:00+00:00"})
     monkeypatch.setattr(native, "profile_compatible", lambda _profile, _bundle, _udid: True)
     original_run = native.subprocess.run
 
@@ -70,7 +70,7 @@ def test_native_sign_uses_separate_extension_profiles(tmp_path, monkeypatch):
         with zipfile.ZipFile(prepared) as z:
             assert plistlib.loads(
                 z.read("Payload/Demo.app/PlugIns/DemoKeyboard.appex/Info.plist")
-            )["CFBundleIdentifier"] == "com.example.demo.keyboard.TEAM123"
+            )["CFBundleIdentifier"] == "com.example.demo.TEAM123.keyboard"
             with zipfile.ZipFile(output, "w") as dest:
                 for entry in z.infolist():
                     dest.writestr(entry, z.read(entry.filename))
@@ -86,5 +86,5 @@ def test_native_sign_uses_separate_extension_profiles(tmp_path, monkeypatch):
     result = native.sign_free_ipa(source, output, "a" * 40)
     assert result["bundle_id"] == "com.example.demo.TEAM123"
     assert [item[0] for item in signed_assets] == [
-        "com.example.demo.TEAM123", "com.example.demo.keyboard.TEAM123"
+        "com.example.demo.TEAM123", "com.example.demo.TEAM123.keyboard"
     ]

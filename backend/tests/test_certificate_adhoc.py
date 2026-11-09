@@ -149,3 +149,33 @@ def test_ota_embedded_profile_bundle_and_device_scope(tmp_path, monkeypatch):
         z.writestr("Payload/Test.app/embedded.mobileprovision", profile_wrong)
     with pytest.raises(ValueError):
         inspect_adhoc_ipa(path, 0, tmp_path)
+
+
+def test_remote_sign_requires_imported_profile_and_bearer(tmp_path):
+    with TestClient(create_app(config(tmp_path))) as client:
+        ipa = sample_ipa(tmp_path / "source.ipa")
+        with ipa.open("rb") as f:
+            created = client.post("/api/ipas", headers=AUTH,
+                files={"file": ("source.ipa", f, "application/octet-stream")})
+        assert created.status_code == 200
+        data = {"ipa_id": created.json()["id"], "device_index": 0}
+        assert client.post("/api/adhoc/sign", json=data).status_code == 401
+        assert client.post("/api/adhoc/sign", headers=AUTH, json=data).status_code == 409
+        assert client.post("/api/adhoc/sign", headers=AUTH,
+                           json={**data, "device_index": -1}).status_code == 422
+        assert client.post("/api/adhoc/sign", headers=AUTH, json={
+            "ipa_id": "missing", "device_index": 0
+        }).status_code == 404
+
+
+def test_remote_ota_allowlist_requires_explicit_method_and_random_capability():
+    from viepn.remote_gateway import allowed
+    assert allowed("GET", "/api/certificates/status")
+    assert allowed("POST", "/api/adhoc/sign")
+    assert allowed("POST", "/api/ota/prepare")
+    assert allowed("GET", "/api/ota/manifest/" + "a" * 43)
+    assert allowed("GET", "/api/ota/package/" + "a" * 43)
+    assert not allowed("GET", "/api/ota/prepare")
+    assert not allowed("POST", "/api/ota/package/" + "a" * 43)
+    assert not allowed("GET", "/api/ota/package/random")
+    assert not allowed("POST", "/api/certificates/import")

@@ -151,7 +151,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          test "$(cat VERSION | tr -d '\\r\\n')" = "2.2.1"
+          test "$(cat VERSION)" = "2.2.1"
           python - <<'PY'
           import json, zipfile
           from pathlib import Path

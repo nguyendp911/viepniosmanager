@@ -335,6 +335,17 @@ private struct LibraryView: View {
                         }.tint(.white)
                     }
                     Button {
+                        Task { await model.signAdHocWithoutUSB(
+                            ipaID: selectedIPA, deviceIndex: selectedAdHocDeviceIndex
+                        ) }
+                    } label: {
+                        Label("Ký IPA Ad Hoc không cần USB", systemImage: "signature")
+                            .frame(maxWidth: .infinity)
+                    }.buttonStyle(.bordered)
+                        .disabled(selectedIPA.isEmpty || model.busy)
+                    Text("Khi tác vụ ký hoàn tất, tải lại Thư viện rồi chọn bản IPA mới đã ký để tạo liên kết OTA.")
+                        .font(.caption2).foregroundStyle(Palette.secondary)
+                    Button {
                         Task { await model.createAdHocOTALink(
                             ipaID: selectedIPA, deviceIndex: selectedAdHocDeviceIndex
                         ) }

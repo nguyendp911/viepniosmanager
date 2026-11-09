@@ -13,6 +13,9 @@ import getpass
 import importlib.util
 import json
 import os
+import plistlib
+import zipfile
+import subprocess
 import shutil
 import sys
 import tempfile
@@ -204,39 +207,96 @@ def _sign_free_ipa_impl(source: Path, destination: Path, udid: str,
         raise NativeSigningError("IPA has no valid bundle identifier")
 
     target_bundle = provision.team_scoped_bundle_id(original_bundle)
+    extensions = []
+    with zipfile.ZipFile(source) as archive:
+        for name in archive.namelist():
+            if name.endswith(".appex/Info.plist") and "/PlugIns/" in name:
+                nested = plistlib.loads(archive.read(name))
+                nested_bundle = nested.get("CFBundleIdentifier")
+                if not isinstance(nested_bundle, str) or not nested_bundle:
+                    raise NativeSigningError("Extension has no bundle ID: " + name)
+                extensions.append((name, nested_bundle))
+    extensions.sort()
+    if len(extensions) > 10:
+        raise NativeSigningError("Too many app extensions for automatic signing.")
+    # The keyboard app uses a shared suite; both app IDs need that capability.
+    app_groups = ["group.com.viepn.aikey"] if original_bundle == "com.viepn.aikey" else []
     assets = provision.ensure_signing_assets(
         target_bundle, udid,
         app_name=str(info.get("display_name") or original_bundle)[:70],
+        app_groups=app_groups,
     )
+    extension_assets = []
+    for extension_path, extension_bundle in extensions:
+        new_bundle = provision.team_scoped_bundle_id(extension_bundle)
+        extension_assets.append((extension_path, new_bundle, provision.ensure_signing_assets(
+            new_bundle, udid, app_name=extension_bundle[:70], app_groups=app_groups,
+        )))
     destination.parent.mkdir(parents=True, exist_ok=True)
     with tempfile.TemporaryDirectory(prefix="viepnsign_") as scratch:
         prepared = Path(scratch) / "prepared.ipa"
         ipa_tools.prepare(
             str(source), str(prepared), bundle_id=target_bundle,
-            strip_extensions=True, remove_device_restrictions=True,
+            strip_extensions=False, remove_device_restrictions=True,
         )
-        try:
-            # Pure Python signer; avoids asking users to install a separate GUI app.
-            from ipasign import Key
-            signer = Key(
-                assets["p12_path"], assets["profile_path"],
-                assets["p12_password"],
-            )
-            signer.sign(str(prepared), str(destination))
-        except ImportError:
-            # Fallback for machines that provide a cross-platform zsign binary.
+        if extension_assets:
+            rewritten = Path(scratch) / "extensions.ipa"
+            replacements = {path: bundle for path, bundle, _ in extension_assets}
+            with zipfile.ZipFile(prepared) as original, zipfile.ZipFile(rewritten, "w") as output:
+                for entry in original.infolist():
+                    data = original.read(entry.filename)
+                    if entry.filename in replacements:
+                        nested_info = plistlib.loads(data)
+                        nested_info["CFBundleIdentifier"] = replacements[entry.filename]
+                        data = plistlib.dumps(nested_info, fmt=plistlib.FMT_BINARY)
+                    output.writestr(entry, data)
+            prepared = rewritten
             executable = os.environ.get("VIEPN_ZSIGN") or signing.resolve_zsign()
-            os.environ["IPASIDE_ZSIGN"] = executable
-            signing.sign_ipa(
-                str(prepared), str(destination),
-                p12_path=assets["p12_path"],
-                p12_password=assets["p12_password"],
-                profile_path=assets["profile_path"],
-                bundle_id=target_bundle,
-                remove_extensions=False,
-                remove_watch=False,
-                remove_uisd=False,
-            )
+            command = [executable, "-k", assets["p12_path"], "-p", assets["p12_password"],
+                       "-m", assets["profile_path"]]
+            for _path, _bundle, extension_profile in extension_assets:
+                command += ["-m", extension_profile["profile_path"]]
+            command += ["-o", str(destination), str(prepared)]
+            result = subprocess.run(command, capture_output=True, text=True)
+            if result.returncode:
+                raise NativeSigningError(
+                    "Multi-profile extension signing failed. Update zsign: "
+                    + (result.stderr or result.stdout)[-1200:]
+                )
+        else:
+            try:
+                from ipasign import Key
+                signer = Key(
+                    assets["p12_path"], assets["profile_path"],
+                    assets["p12_password"],
+                )
+                signer.sign(str(prepared), str(destination))
+            except ImportError:
+                executable = os.environ.get("VIEPN_ZSIGN") or signing.resolve_zsign()
+                os.environ["IPASIDE_ZSIGN"] = executable
+                signing.sign_ipa(
+                    str(prepared), str(destination),
+                    p12_path=assets["p12_path"],
+                    p12_password=assets["p12_password"],
+                    profile_path=assets["profile_path"],
+                    bundle_id=target_bundle,
+                    remove_extensions=False,
+                    remove_watch=False,
+                    remove_uisd=False,
+                )
+
+    if extensions:
+        with zipfile.ZipFile(destination) as signed:
+            names = set(signed.namelist())
+            for extension_path, new_bundle, _ in extension_assets:
+                provision_path = extension_path.removesuffix("Info.plist") + "embedded.mobileprovision"
+                if extension_path not in names or provision_path not in names:
+                    destination.unlink(missing_ok=True)
+                    raise NativeSigningError("Signed IPA is missing a keyboard extension or its profile.")
+                nested_info = plistlib.loads(signed.read(extension_path))
+                if nested_info.get("CFBundleIdentifier") != new_bundle:
+                    destination.unlink(missing_ok=True)
+                    raise NativeSigningError("Signed extension bundle ID mismatch.")
 
     metadata = inspect_ipa(destination)
     if not metadata.get("signed_candidate"):

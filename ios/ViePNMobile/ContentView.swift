@@ -437,6 +437,15 @@ private struct LibraryView: View {
                     Text("Thiết bị đã chọn không còn trong danh sách. Hãy quét lại.")
                         .font(.footnote).foregroundStyle(.orange)
                 }
+                if let ipa = model.overview?.ipas.first(where: { $0.id == selectedIPA }),
+                   ipa.signedCandidate != 1 {
+                    Label(
+                        resign ? "Sẽ ký lại IPA trước khi cài trên thiết bị đã ghép đôi Apple." :
+                        "IPA này chưa ký: không thể cài trực tiếp. Bật Ký lại (thiết bị Apple đã ghép đôi), hoặc dùng Ký Ad Hoc → Cài OTA không dây ở trên.",
+                        systemImage: "exclamationmark.triangle"
+                    )
+                    .font(.footnote).foregroundStyle(.orange)
+                }
                 Toggle("Ký lại bằng P12/profile", isOn: $resign).tint(Palette.mint)
                 Toggle("Tự động thử gia hạn", isOn: $autoRenew).tint(Palette.mint)
                 Button {
@@ -447,7 +456,8 @@ private struct LibraryView: View {
                         .frame(maxWidth: .infinity)
                 }.buttonStyle(.borderedProminent)
                 .disabled(selectedIPA.isEmpty || selectedDevice.isEmpty || model.busy ||
-                    !model.devices.contains(where: { $0.id == selectedDevice }))
+                    !model.devices.contains(where: { $0.id == selectedDevice }) ||
+                    (!resign && model.overview?.ipas.first(where: { $0.id == selectedIPA })?.signedCandidate != 1))
             }
         }
         .alert("Tên phân biệt bản build", isPresented: $showRenamePrompt) {

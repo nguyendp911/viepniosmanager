@@ -88,3 +88,25 @@ def test_native_sign_uses_separate_extension_profiles(tmp_path, monkeypatch):
     assert [item[0] for item in signed_assets] == [
         "com.example.demo.TEAM123", "com.example.demo.TEAM123.keyboard"
     ]
+
+
+def test_keyboard_diagnostics_detects_unsigned_profile_and_prefix(tmp_path):
+    from viepn.keyboard_diagnostics import diagnose
+    ipa = make_keyboard_ipa(tmp_path / "unsigned.ipa")
+    result = diagnose(ipa)
+    assert not result["ok"]
+    assert result["extensions"][0]["keyboard"]
+    assert any("embedded.mobileprovision" in error for error in result["errors"])
+
+
+def test_keyboard_diagnostics_missing_extension(tmp_path):
+    from viepn.keyboard_diagnostics import diagnose
+    path = tmp_path / "no_keyboard.ipa"
+    with zipfile.ZipFile(path, "w") as archive:
+        archive.writestr("Payload/Demo.app/Info.plist", plistlib.dumps({
+            "CFBundleIdentifier": "com.example.demo",
+            "CFBundleExecutable": "Demo",
+        }))
+    result = diagnose(path)
+    assert not result["ok"]
+    assert any("No .appex" in error for error in result["errors"])

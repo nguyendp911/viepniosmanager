@@ -292,7 +292,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         blob = ota_shares.manifest(token)
         if blob is None:
             raise HTTPException(404, detail='OTA link expired or invalid')
-        return Response(content=blob, media_type='application/xml',
+        return Response(content=blob, media_type='text/xml',
                         headers={'Cache-Control': 'no-store', 'X-Content-Type-Options': 'nosniff',
                                  'Referrer-Policy': 'no-referrer'})
 

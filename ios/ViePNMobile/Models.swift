@@ -11,6 +11,10 @@ struct AdHocCertificateStatus: Decodable {
     let certificateExpiresAt: String?
     let cmsSignatureVerified: Bool?
 }
+struct AdHocSignRequest: Encodable {
+    let ipa_id: String
+    let device_index: Int
+}
 struct AdHocOTARequest: Encodable {
     let ipa_id: String
     let device_index: Int

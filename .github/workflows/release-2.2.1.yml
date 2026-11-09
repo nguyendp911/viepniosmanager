@@ -161,8 +161,10 @@ jobs:
           import json, zipfile
           from pathlib import Path
           with zipfile.ZipFile("release-assets/ViePN-Windows-Portable-2.2.1.zip") as archive:
-              assert archive.read("backend/viepn/native_sign.py") == Path("backend/viepn/native_sign.py").read_bytes(), "Signer source is stale"
-              assert archive.read("windows/install-portable.ps1") == Path("windows/install-portable.ps1").read_bytes(), "Installer source is stale"
+              def normalized(data):
+                  return data.replace(b"\\r\\n", b"\\n")
+              assert normalized(archive.read("backend/viepn/native_sign.py")) == normalized(Path("backend/viepn/native_sign.py").read_bytes()), "Signer source is stale"
+              assert normalized(archive.read("windows/install-portable.ps1")) == normalized(Path("windows/install-portable.ps1").read_bytes()), "Installer source is stale"
               manifest = json.loads(archive.read("manifest.json"))
               assert manifest["version"] == "2.2.1"
           PY

@@ -60,6 +60,8 @@ def test_native_sign_uses_separate_extension_profiles(tmp_path, monkeypatch):
 
     monkeypatch.setattr(native.provision, "ensure_signing_assets", fake_assets)
     monkeypatch.setattr(native.signing, "resolve_zsign", lambda: "zsign")
+    monkeypatch.setattr(native, "parse_provision", lambda data: {"bundle_pattern": "com.example.demo.keyboard.TEAM123", "devices": ["a" * 40], "expires_at": "2030-01-01T00:00:00+00:00"})
+    monkeypatch.setattr(native, "profile_compatible", lambda _profile, _bundle, _udid: True)
     original_run = native.subprocess.run
 
     def fake_run(command, **kwargs):

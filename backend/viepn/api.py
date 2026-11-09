@@ -228,7 +228,12 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         # Exposes only non-secret metadata, never raw P12, profile contents,
         # DPAPI blob or password. Import only via Windows local CLI.
         try:
-            return vault_metadata(cfg.root)
+            info = vault_metadata(cfg.root)
+            return {key: info[key] for key in (
+                "configured", "signing_mode", "mode", "bundle_pattern",
+                "devices_count", "expires_at", "certificate_expires_at",
+                "matched", "cms_signature_verified"
+            ) if key in info}
         except (ValueError, OSError):
             return {"configured": False, "signing_mode": "invalid_local_vault"}
 

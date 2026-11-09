@@ -23,6 +23,10 @@ _RULES = (
     ("GET", re.compile(r"^/api/health$")),
     ("GET", re.compile(r"^/api/overview$")),
     ("GET", re.compile(r"^/api/doctor$")),
+    ("GET", re.compile(r"^/api/certificates/status$")),
+    ("POST", re.compile(r"^/api/ota/prepare$")),
+    ("GET", re.compile(r"^/api/ota/manifest/[A-Za-z0-9_-]{40,128}$")),
+    ("GET", re.compile(r"^/api/ota/package/[A-Za-z0-9_-]{40,128}$")),
     ("GET", re.compile(r"^/api/devices$")),
     ("GET", re.compile(r"^/api/remote/devices$")),
     ("POST", re.compile(r"^/api/remote/devices/register$")),
@@ -86,7 +90,13 @@ def create_remote_app(settings: Settings | None = None,
 
         # A public health probe exposes no private data. Other calls require
         # the same secret as the primary dashboard, even within the tailnet.
-        if url_path not in ("/", "/api/health"):
+        # Public *capability* URLs are necessary for the iOS system OTA
+        # installer, which cannot attach our app's Authorization header.
+        # Only short-lived, random manifest/package tokens are exempt.
+        ota_capability = bool(re.fullmatch(
+            r"/api/ota/(?:manifest|package)/[A-Za-z0-9_-]{40,128}", url_path
+        ))
+        if url_path not in ("/", "/api/health") and not ota_capability:
             expected = f"Bearer {cfg.token}"
             if not authorization or not hmac.compare_digest(authorization, expected):
                 raise HTTPException(401, detail="Authentication required")

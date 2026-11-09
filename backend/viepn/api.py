@@ -480,8 +480,19 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             check_udid(payload.udid)
         except ValueError as e:
             raise HTTPException(400, detail=str(e))
-        if not manager.db.one('SELECT id FROM ipa WHERE id=?', (payload.ipa_id,)):
+        record = manager.db.one('SELECT id,signed_candidate,profile_expires FROM ipa WHERE id=?',
+                                (payload.ipa_id,))
+        if not record:
             raise HTTPException(404, detail='Unknown IPA')
+        # Fail immediately, rather than queueing an install job that cannot
+        # succeed. A remote-only Tailscale device must use signed Ad Hoc OTA.
+        if not payload.resign and not record['signed_candidate']:
+            raise HTTPException(409, detail=(
+                'IPA chưa ký. Với iPhone qua Tailscale, hãy chọn Ký IPA Ad Hoc '
+                'không cần USB, chờ tác vụ ký thành công, chọn IPA mới đã ký '
+                'rồi dùng Cài Ad Hoc OTA. Nếu dùng thiết bị Apple đã ghép đôi '
+                'USB/Wi-Fi, bật Ký lại bằng P12/profile trước khi cài.'
+            ))
         return {'job_id': manager.submit('install', payload.model_dump())}
 
     @app.post('/api/sign', dependencies=[Depends(auth)])

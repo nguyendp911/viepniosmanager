@@ -18,12 +18,13 @@ from .free_sign import ShareStore
 from .service import Manager
 from .backups import BackupError, create_backup, list_backups, verify_backup
 from .doctor import doctor
-from .certificate_vault import metadata as vault_metadata
+from .certificate_vault import metadata as vault_metadata, preflight as adhoc_preflight, signing_material
 from .adhoc_ota import OTAShareStore, inspect_adhoc_ipa, validate_base
 from .remote_devices import register as register_remote_device, inventory as remote_inventory, scan_nearby
 from .native_sign import status as apple_account_status
 from .apple_auth import AppleAuthFlow
 from .tools import ExternalToolError, check_udid, connected_devices, installed_apps
+from .ipa import parse_provision
 
 WEB_ROOT = Path(__file__).resolve().parents[2] / 'web'
 
@@ -32,6 +33,11 @@ class RegisterRemoteDevice(BaseModel):
     device_id: str
     name: str = Field(min_length=1, max_length=64)
     ble_token: str
+
+
+class AdHocSignRequest(BaseModel):
+    ipa_id: str
+    device_index: int = Field(ge=0, le=100)
 
 
 class OTARequest(BaseModel):
@@ -236,6 +242,31 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             ) if key in info}
         except (ValueError, OSError):
             return {"configured": False, "signing_mode": "invalid_local_vault"}
+
+    @app.post('/api/adhoc/sign', dependencies=[Depends(auth)])
+    async def adhoc_sign_without_usb(payload: AdHocSignRequest):
+        # Authorized remote signing does NOT use USB pairing. The UDID comes
+        # exclusively from an imported device-scoped Ad Hoc profile.
+        record = manager.db.one('SELECT id,bundle_id FROM ipa WHERE id=?',
+                                (payload.ipa_id,))
+        if not record:
+            raise HTTPException(404, detail='IPA not found')
+        try:
+            def validate_request():
+                _, profile_path, _ = signing_material(cfg.root)
+                profile = parse_provision(profile_path.read_bytes())
+                devices = profile['devices']
+                if payload.device_index >= len(devices):
+                    raise ValueError('The requested device is not in the Ad Hoc profile')
+                udid = devices[payload.device_index]
+                adhoc_preflight(cfg.root, record['bundle_id'], udid)
+                return udid
+            udid = await asyncio.to_thread(validate_request)
+        except (ValueError, OSError, RuntimeError) as exc:
+            raise HTTPException(409, detail=str(exc)) from None
+        return {'job_id': manager.submit('sign', {
+            'ipa_id': payload.ipa_id, 'udid': udid,
+        })}
 
     @app.post('/api/ota/prepare', dependencies=[Depends(auth)])
     async def prepare_adhoc_ota(payload: OTARequest):

@@ -32,12 +32,17 @@ def allowed(path: Path) -> bool:
         return False
     if rel.parts[0] not in DIRECTORIES and rel.as_posix() not in TOP_LEVEL:
         return False
+    if rel.as_posix() == "backend/viepn/applekit/vendor/zsign.exe":
+        return True
     if path.suffix.lower() not in ALLOWED_SUFFIXES:
         return False
     return True
 
 
 def build() -> tuple[Path, Path]:
+    signer = ROOT / "backend/viepn/applekit/vendor/zsign.exe"
+    if not signer.is_file():
+        raise RuntimeError("Pinned zsign.exe is missing. Run python windows/fetch_signer.py before packing.")
     DIST.mkdir(exist_ok=True)
     archive_path = DIST / "ViePN-Windows-Portable.zip"
     checksum_path = DIST / "ViePN-Windows-Portable.sha256"

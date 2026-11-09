@@ -12,7 +12,7 @@ permissions:
 
 concurrency:
   group: viepn-release-2.2.1
-  cancel-in-progress: false
+  cancel-in-progress: true
 
 jobs:
   validate:
@@ -161,6 +161,15 @@ jobs:
               manifest = json.loads(archive.read("manifest.json"))
               assert manifest["version"] == "2.2.1"
           PY
+      - name: Ensure release is from latest main commit
+        shell: bash
+        run: |
+          set -euo pipefail
+          git fetch origin main
+          test "$(git rev-parse origin/main)" = "$GITHUB_SHA" || {
+            echo "::error::Release source is stale; refusing to publish an older commit."
+            exit 1
+          }
       - name: Publish version tag and stable GitHub Release
         env:
           GH_TOKEN: ${{ github.token }}

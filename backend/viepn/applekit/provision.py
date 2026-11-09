@@ -16,6 +16,7 @@ profiles last 7 days), so repeat signs don't burn Apple's rate limits.
 from __future__ import annotations
 
 import base64
+import hashlib
 import json
 from typing import Any, Callable
 
@@ -354,7 +355,7 @@ def ensure_signing_assets(
 
     signing_dir = paths.signing_dir(_account_slug(account))
     p12_path = signing_dir / _IDENTITY_P12
-    profile_path = signing_dir / _PROFILE
+    profile_path = signing_dir / ("profile-" + hashlib.sha256(bundle_id.encode("utf-8")).hexdigest()[:16] + ".mobileprovision")
     p12_path.write_bytes(signing.build_p12(cert_der, key_pem))
     profile_path.write_bytes(bytes(profile_data))
 

@@ -17,22 +17,11 @@ set "VIEPN_PORT=8765"
 set "VIEPN_REMOTE_PORT=8766"
 set "PY=.venv\Scripts\python.exe"
 
-rem Set up only when the Python environment/dependencies are missing.
-if not exist "%PY%" (
-    where py >nul 2>&1
-    if errorlevel 1 (
-        echo [ERROR] Python launcher not found. Install Python 3.10+.
-        goto fail
-    )
-    echo [ViePN] Creating local Python environment...
-    py -3 -m venv .venv
-    if errorlevel 1 goto fail
-)
-"%PY%" -c "import fastapi, uvicorn, httpx, requests, multipart, pymobiledevice3" >nul 2>&1
+rem Enforce Python 3.15 and migrate an older .venv safely.
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File "windows\ensure-python315.ps1"
 if errorlevel 1 (
-    echo [ViePN] Installing missing Python packages...
-    "%PY%" -m pip install -r backend\requirements.txt
-    if errorlevel 1 goto fail
+    echo [ERROR] Python 3.15 setup failed. Existing app data was preserved.
+    goto fail
 )
 
 rem The two ViePN ports must never listen on a public/LAN interface.

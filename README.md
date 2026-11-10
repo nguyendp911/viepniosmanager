@@ -1,8 +1,14 @@
+## Tự tải IPA iOS khi cập nhật ViePN
+
+Bộ cập nhật `Update-ViePN.bat` (chế độ main) hiện kiểm tra GitHub Actions và **tự tải IPA iOS unsigned đúng commit mã nguồn Windows** vào thư mục `C:\ViePN-iOS-Manager\IPA` nếu workflow `ViePN CI` đã build thành công. File được đặt tên `ViePNMobile-main-<12 ký tự SHA>-UNSIGNED.ipa` để không ghi đè IPA đã có.
+
+Tính năng tải GitHub Actions artifacts cần **GitHub CLI** tại https://cli.github.com/ và đăng nhập một lần bằng `gh auth login`. Nếu không có CLI, chưa đăng nhập, workflow còn chạy/thất bại hoặc artifact hết hạn, cập nhật Windows vẫn thành công và in cảnh báo cụ thể. Nhấp đúp `Update-ViePN.bat` lần nữa sau khi build thành công để tải IPA, kể cả mã nguồn Windows đã mới nhất. IPA tải về là **chưa ký**, cần ký đúng chứng chỉ Apple và provisioning profile cho app cùng extension trước khi cài; không tự động cài iPhone.
+
 ## Cập nhật mới nhất từ GitHub main (Windows)
 
 Từ phiên bản updater mới, nhấp đúp `Update-ViePN.bat` để tải mã nguồn Windows mới nhất từ nhánh `main`, không phải đợi GitHub Release. Cần cài **Git for Windows**; updater tự tải nhánh chính thức vào thư mục tạm, chỉ sao chép tệp mã nguồn được phép, sao lưu tệp cũ vào `code-backups`, không đụng tới `IPA`, `.venv`, token, phiên Apple và chứng chỉ. Đóng cửa sổ ViePN API và Gateway trước khi cập nhật; nếu cổng 8765/8766 đang được sử dụng, thao tác dừng an toàn.
 
-Để cập nhật bằng bản phát hành ổn định gồm Windows và iOS IPA unsigned, chạy `Update-ViePN.bat --release`. Chế độ Release chỉ hoạt động khi trên GitHub có đủ ZIP Windows, IPA iOS và SHA-256. **Chế độ main không build/cài IPA iOS**: tải IPA mới sau khi workflow GitHub Actions `ios-build` hoàn tất rồi ký bằng chứng chỉ hợp lệ.
+Để cập nhật bằng bản phát hành ổn định gồm Windows và iOS IPA unsigned, chạy `Update-ViePN.bat --release`. Chế độ Release chỉ hoạt động khi trên GitHub có đủ ZIP Windows, IPA iOS và SHA-256. **Chế độ main không tự build hoặc cài IPA iOS**: tự tải artifact unsigned nếu workflow GitHub Actions đã thành công và máy có GitHub CLI đăng nhập; bạn vẫn cần ký IPA rồi cài bằng ViePN.
 
 Máy đang có phiên bản `Update-ViePN.bat` cũ cần cập nhật mã nguồn BAT và `windows/update-main.ps1` một lần (ví dụ `git pull origin main` nếu dùng Git checkout). Sau đó nhấp đúp BAT để cập nhật các lần tiếp theo.
 

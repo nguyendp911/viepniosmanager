@@ -57,6 +57,10 @@ try {
     $marker = Join-Path $Root '.viepn-main-commit'
     if ((Test-Path -LiteralPath $marker) -and (Get-Content -LiteralPath $marker -Raw).Trim() -eq $sha) {
         Write-Host '[OK] ViePN main source is already up to date.' -ForegroundColor Green
+        $iosDownloader = Join-Path $checkout 'windows\download-ios-main.ps1'
+        if (Test-Path -LiteralPath $iosDownloader -PathType Leaf) {
+            & $iosDownloader -Commit $sha -Destination $Root
+        }
         exit 0
     }
     $files = @(& git.exe -C $checkout ls-files)
@@ -90,7 +94,13 @@ try {
     Set-Content -LiteralPath $marker -Value $sha -Encoding Ascii
     Write-Host "[OK] ViePN Windows source updated to main commit $($sha.Substring(0,12))." -ForegroundColor Green
     Write-Host '[OK] User IPA, certificates, access token, sessions and .venv were preserved.'
-    Write-Host '[INFO] This updates Windows source only. iOS IPA is built by GitHub Actions and must be signed separately.'
+    Write-Host '[ViePN] Checking for matching unsigned iOS IPA from GitHub Actions...'
+    $iosDownloader = Join-Path $checkout 'windows\download-ios-main.ps1'
+    if (Test-Path -LiteralPath $iosDownloader -PathType Leaf) {
+        & $iosDownloader -Commit $sha -Destination $Root
+    } else {
+        Write-Warning 'iOS downloader not found in the downloaded source.'
+    }
     Write-Host "[NEXT] Start $Root\Start-ViePN.bat"
 } catch {
     Write-Host "[ERROR] $($_.Exception.Message)" -ForegroundColor Red

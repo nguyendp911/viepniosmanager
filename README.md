@@ -78,7 +78,7 @@ Bạn chỉ cần **nhấp đúp một file duy nhất: `Start-ViePN.bat`** ở 
 
 Trong tab **Thư viện IPA**, mỗi bản build được phân biệt bằng **tên tùy chỉnh, phiên bản, ngày nhập, mã SHA và hạn provisioning profile**. Nhấn **Đổi tên** để đặt biệt danh phân biệt các bản build cùng tên; tên này chỉ tồn tại trong ViePN, không sửa Info.plist bên trong IPA.
 
-Bạn có thể **Xóa** một IPA, **Chọn tất cả / Xóa đã chọn** hoặc **Xóa toàn bộ IPA** (kể cả IPA đã ký/có embedded profile). ViePN hiển thị cảnh báo, rồi yêu cầu nhập cụm xác nhận `DELETE SELECTED IPAS` hoặc `DELETE ALL IPAS`.
+Bạn có thể **Xóa** một IPA, **Chọn tất cả / Xóa đã chọn** hoặc **Xóa toàn bộ IPA** (kể cả IPA đã ký/có embedded profile). ViePN chỉ hiển thị hộp thoại xác nhận Có/Không trước khi xóa; không còn yêu cầu gõ `DELETE SELECTED IPAS` hoặc `DELETE ALL IPAS`.
 
 Nếu file đang được một bản cài theo dõi gia hạn sử dụng, phải đồng ý **hủy bản ghi theo dõi gia hạn** liên quan thì mới xóa được. ViePN không cho xóa khi có tác vụ ký/cài/gia hạn đang chạy hoặc đang đợi liên quan. Thao tác chỉ xóa IPA và lịch theo dõi trên máy Windows: **không gỡ ứng dụng khỏi iPhone, không xóa provisioning profile Apple khỏi hệ thống Developer, và không xóa các tệp .mobileprovision độc lập đã tải lên**. Khi cần gia hạn lại, hãy nhập lại IPA, thiết lập tài khoản và theo dõi mới.
 

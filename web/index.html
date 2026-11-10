@@ -116,7 +116,7 @@ button:not(:disabled):active{transform:translateY(1px)}
 <button class="button small danger" id="deleteSelectedIPA" type="button">Xóa đã chọn</button>
 <button class="button small danger" id="deleteAllIPA" type="button">Xóa toàn bộ IPA</button>
 </div>
-<p class="help">Mỗi bản build có mã SHA, phiên bản, ngày nhập và hạn profile riêng. Bạn có thể đặt tên riêng. Xóa IPA đang theo dõi gia hạn sẽ yêu cầu xác nhận hủy theo dõi; không gỡ ứng dụng trên iPhone.</p>
+<p class="help">Mỗi bản build có mã SHA, phiên bản, ngày nhập và hạn profile riêng. Bạn có thể đặt tên riêng. Xóa IPA sẽ thực hiện ngay, đồng thời hủy theo dõi gia hạn liên quan; không gỡ ứng dụng trên iPhone.</p>
 <div id="libraryList"></div></section><section class="panel"><h2>Thêm ứng dụng</h2><div class="field"><label class="label">File IPA</label><input class="input" id="ipaFile" type="file" accept=".ipa"></div><button class="button primary" id="uploadIpa">↑ &nbsp; Nhập thư viện</button><hr style="border:0;border-top:1px solid var(--stroke);margin:23px 0"><h2>Ký và cài lên iPhone</h2><div class="field"><label class="label">Chọn IPA</label><select id="ipaChoice" class="input"></select></div><div class="field"><label class="label">Thiết bị</label><select id="deviceChoice" class="input"></select></div><div class="field"><label class="label">Provisioning profile (để trống: tự chọn mới nhất phù hợp)</label><select id="profileChoice" class="input"></select></div><div class="field"><label class="row"><input type="checkbox" id="resignCheck">Ký lại IPA trước khi cài</label></div><div class="field"><label class="row"><input type="checkbox" id="renewCheck" checked>Theo dõi và thử gia hạn trước hạn</label></div><div class="actions"><button class="button primary" id="installBtn">↧ Cài ứng dụng</button><button class="button" id="signBtn">✓ Chỉ ký IPA</button></div><p class="help">Nếu IPA đã được ký hợp lệ, có thể bỏ chọn ký lại. Tất cả tác vụ sẽ trả về trạng thái thực tế trong Nhật ký.</p></section></div></section>
 <section class="drawer" id="devices">
 <section class="panel">
@@ -254,10 +254,6 @@ async function removeIPAs(ids,all=false){
  if(!chosen.length)throw Error('Chưa chọn bản build nào');
  const linked=state.installations.filter(x=>chosen.some(ipa=>ipa.id===x.source_ipa_id||ipa.id===x.current_ipa_id));
  const force=linked.length>0;
- let message='Xóa '+chosen.length+' bản IPA khỏi thư viện Windows?';
- if(force)message+='\\n\\n⚠ Có '+linked.length+' bản cài đang được theo dõi gia hạn. XÓA sẽ hủy lịch gia hạn của chúng.';
- message+='\\n\\nKhông gỡ app trên iPhone, không thu hồi profile Apple. Không thể hoàn tác.';
- if(!window.confirm(message))return;
  const phrase=all?'DELETE ALL IPAS':'DELETE SELECTED IPAS';
  const result=await post('/ipas/bulk-delete',{all,ipa_ids:all?[]:ids,force,confirm:phrase});
  notify('Đã xóa '+result.deleted_ids.length+' IPA, hủy '+result.tracking_removed+' lịch gia hạn'+

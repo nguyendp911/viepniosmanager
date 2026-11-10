@@ -38,9 +38,9 @@ Từ **ViePN 2.1.2**, nhấp đúp **`C:\ViePN-iOS-Manager\Update-ViePN.bat`**:
 
 Không cần mở cổng mạng hoặc bật Tailscale Funnel; updater chỉ tải bản phát hành từ trang GitHub chính thức. Không tắt Defender hoặc bypass kiểm tra checksum.
 
-## Cài đặt Windows (Python 3.14)
+## Cài đặt Windows (Python 3.15 64-bit)
 
-1. Cài iTunes/Apple Mobile Device Service từ Apple. Mở khóa iPhone, kết nối USB và chọn Trust This Computer.
+1. Cài Python 3.15 64-bit từ https://www.python.org/downloads/windows/ và xác minh bằng `py -3.15 --version`. Cài iTunes/Apple Mobile Device Service từ Apple. Mở khóa iPhone, kết nối USB và chọn Trust This Computer.
 2. Mở PowerShell trong repo:
 
 ```powershell
@@ -48,6 +48,8 @@ cd C:\ViePN-iOS-Manager
 git pull origin main
 Start-ViePN.bat
 ```
+
+`Start-ViePN.bat` sử dụng `windows/ensure-python315.ps1` để chọn Python 3.15 64-bit. Nếu `.venv` hiện tại dùng phiên bản khác, nó được đổi tên thành `.venv-backup-YYYYMMDD-HHMMSS` trước khi tạo lại `.venv` bằng Python 3.15 và cài các thư viện. Nếu bước tạo mới hoặc cài thư viện thất bại, công cụ sẽ cố gắng phục hồi `.venv` cũ. Không xóa `.venv` bằng tay khi ViePN đang chạy. Các tệp IPA, chứng chỉ và phiên đăng nhập trong `%LOCALAPPDATA%` không bị sửa đổi. Nếu không thấy Python 3.15, công cụ dừng với thông báo cài đặt thay vì tự dùng Python 3.14 hoặc 3.12.
 
 Nếu dùng ZIP (không có thư mục `.git`), tải bản mới từ GitHub và thay phần mã nguồn, **không xóa** `%LOCALAPPDATA%\ViePN-iOS-Manager` chứa token, IPA và phiên Apple. Khi cập nhật chương trình, dừng server cũ bằng `Ctrl+C`.
 

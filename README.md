@@ -1,3 +1,11 @@
+## Cập nhật mới nhất từ GitHub main (Windows)
+
+Từ phiên bản updater mới, nhấp đúp `Update-ViePN.bat` để tải mã nguồn Windows mới nhất từ nhánh `main`, không phải đợi GitHub Release. Cần cài **Git for Windows**; updater tự tải nhánh chính thức vào thư mục tạm, chỉ sao chép tệp mã nguồn được phép, sao lưu tệp cũ vào `code-backups`, không đụng tới `IPA`, `.venv`, token, phiên Apple và chứng chỉ. Đóng cửa sổ ViePN API và Gateway trước khi cập nhật; nếu cổng 8765/8766 đang được sử dụng, thao tác dừng an toàn.
+
+Để cập nhật bằng bản phát hành ổn định gồm Windows và iOS IPA unsigned, chạy `Update-ViePN.bat --release`. Chế độ Release chỉ hoạt động khi trên GitHub có đủ ZIP Windows, IPA iOS và SHA-256. **Chế độ main không build/cài IPA iOS**: tải IPA mới sau khi workflow GitHub Actions `ios-build` hoàn tất rồi ký bằng chứng chỉ hợp lệ.
+
+Máy đang có phiên bản `Update-ViePN.bat` cũ cần cập nhật mã nguồn BAT và `windows/update-main.ps1` một lần (ví dụ `git pull origin main` nếu dùng Git checkout). Sau đó nhấp đúp BAT để cập nhật các lần tiếp theo.
+
 ## ViePN 2.3.0 — Certificate Manager và Ad Hoc OTA không dây
 
 **Đã thêm quy trình chứng chỉ Distribution/Ad Hoc**: import P12 và .mobileprovision ngay trên Windows bằng `Import-ViePN-Certificate.bat`, xác minh cặp khóa–chứng chỉ–profile, lưu mật khẩu dưới Windows DPAPI. P12 và mật khẩu **không tải lên GitHub hay Tailscale**.

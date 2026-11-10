@@ -41,6 +41,7 @@ jobs:
         run: |
           Start-ViePN.bat --self-test
           Update-ViePN.bat --self-test
+          & powershell.exe -NoProfile -ExecutionPolicy Bypass -File windows\update-main.ps1 -SelfTest
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'

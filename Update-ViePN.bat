@@ -1,28 +1,29 @@
 @echo off
 setlocal EnableExtensions DisableDelayedExpansion
-title ViePN - Auto Update from Official GitHub Release
+title ViePN - Auto Update
 cd /d "%~dp0"
 if /I "%~1"=="--self-test" (
-  if not exist "%~dp0windows\update-viepn.ps1" (
-    echo [ERROR] Missing windows\update-viepn.ps1
-    exit /b 1
-  )
-  echo [OK] ViePN updater launcher found.
+  if not exist "%~dp0windows\update-main.ps1" exit /b 1
+  if not exist "%~dp0windows\update-viepn.ps1" exit /b 1
+  echo [OK] ViePN updater scripts found.
   exit /b 0
 )
 echo.
-echo ==============================================================
-echo  ViePN iOS Manager - UPDATE ALL (Windows source + iOS IPA)
-echo  Latest official GitHub Release; verified SHA256 and manifest
-echo ==============================================================
+echo =============================================================
+echo  ViePN iOS Manager - Update
+echo  Default: latest Windows source from GitHub main
+echo  Optional: --release for verified Windows + unsigned iOS IPA
+echo =============================================================
 echo.
-if not exist "%~dp0windows\update-viepn.ps1" (
-  echo [ERROR] Missing windows\update-viepn.ps1
-  echo Install ViePN Portable 2.1.2 or newer first.
+set "UPDATER=%~dp0windows\update-main.ps1"
+if /I "%~1"=="--release" set "UPDATER=%~dp0windows\update-viepn.ps1"
+if not exist "%UPDATER%" (
+  echo [ERROR] Missing updater: %UPDATER%
+  echo Download the latest source ZIP from your official GitHub repository.
   pause
   exit /b 1
 )
-powershell.exe -NoLogo -NoProfile -ExecutionPolicy Bypass -File "%~dp0windows\update-viepn.ps1" -Destination "C:\ViePN-iOS-Manager"
+powershell.exe -NoLogo -NoProfile -ExecutionPolicy Bypass -File "%UPDATER%" -Destination "C:\ViePN-iOS-Manager"
 set "CODE=%errorlevel%"
 if not "%CODE%"=="0" (
   echo.
@@ -31,7 +32,7 @@ if not "%CODE%"=="0" (
   exit /b %CODE%
 )
 echo.
-echo [OK] ViePN source and iOS IPA update completed.
+echo [OK] Update completed.
 echo Open C:\ViePN-iOS-Manager\Start-ViePN.bat to run.
 pause
 endlocal

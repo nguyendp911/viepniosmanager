@@ -219,6 +219,26 @@ def _sign_free_ipa_impl(source: Path, destination: Path, udid: str,
     extensions.sort()
     if len(extensions) > 10:
         raise NativeSigningError("Too many app extensions for automatic signing.")
+    # Resolve every required ID before ANY provisioning writes. Otherwise the
+    # containing app can consume the last Personal Team App ID slot while the
+    # Share Extension / keyboard extension still needs another one (Apple 9120).
+    requested_extensions = []
+    for extension_path, extension_bundle in extensions:
+        if not extension_bundle.startswith(original_bundle + "."):
+            raise NativeSigningError(
+                "Extension bundle ID must start with containing app bundle ID: " + extension_bundle
+            )
+        extension_suffix = extension_bundle[len(original_bundle) + 1:]
+        requested_extensions.append((extension_path, target_bundle + "." + extension_suffix))
+    try:
+        provision.preflight_app_ids(
+            [target_bundle] + [bundle for _path, bundle in requested_extensions]
+        )
+    except Exception as exc:
+        # The read-only preflight must block unsupported IPA structures or
+        # clearly insufficient quotas, not silently strip extensions.
+        raise NativeSigningError(str(exc)) from exc
+
     # The keyboard app uses a shared suite; both app IDs need that capability.
     app_groups = ["group.com.viepn.aikey"] if original_bundle == "com.viepn.aikey" else []
     assets = provision.ensure_signing_assets(
@@ -227,15 +247,9 @@ def _sign_free_ipa_impl(source: Path, destination: Path, udid: str,
         app_groups=app_groups,
     )
     extension_assets = []
-    for extension_path, extension_bundle in extensions:
-        if not extension_bundle.startswith(original_bundle + "."):
-            raise NativeSigningError(
-                "Extension bundle ID must start with containing app bundle ID: " + extension_bundle
-            )
-        extension_suffix = extension_bundle[len(original_bundle) + 1:]
-        new_bundle = target_bundle + "." + extension_suffix
+    for extension_path, new_bundle in requested_extensions:
         extension_assets.append((extension_path, new_bundle, provision.ensure_signing_assets(
-            new_bundle, udid, app_name=extension_bundle[:70], app_groups=app_groups,
+            new_bundle, udid, app_name=new_bundle[:70], app_groups=app_groups,
         )))
     destination.parent.mkdir(parents=True, exist_ok=True)
     with tempfile.TemporaryDirectory(prefix="viepnsign_") as scratch:

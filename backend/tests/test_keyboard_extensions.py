@@ -46,6 +46,8 @@ def test_native_sign_uses_separate_extension_profiles(tmp_path, monkeypatch):
     monkeypatch.setattr(native.gsa, "load_session", lambda _email=None: {"email": "test@example.com"})
     monkeypatch.setattr(native.provision, "team_scoped_bundle_id",
                         lambda bundle: bundle + ".TEAM123")
+    monkeypatch.setattr(native.provision, "preflight_app_ids",
+                        lambda bundles: {"missing": [], "reused": bundles})
     signed_assets = []
 
     def fake_assets(bundle, udid, **kwargs):

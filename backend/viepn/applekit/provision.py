@@ -262,16 +262,58 @@ def _ensure_device(team_id: str, udid: str, name: str) -> None:
             raise
 
 
+def preflight_app_ids(bundle_ids: list[str]) -> dict[str, Any]:
+    """Read-only quota check for the containing app AND its extensions.
+
+    Apple's Personal Team limit is rolling over seven days. Fewer than ten
+    currently visible IDs does not guarantee another creation will be allowed.
+    Never delete or rename an App ID automatically to work around that limit.
+    """
+    requested = list(dict.fromkeys(bundle_ids))
+    if not requested:
+        raise ValueError("At least one bundle ID is required")
+    team_id = developer.list_teams()[0]["teamId"]
+    existing = developer.list_app_ids(team_id)
+    identifiers = {str(item.get("identifier") or "") for item in existing}
+    missing = [identifier for identifier in requested if identifier not in identifiers]
+    # This is a safe lower-bound preflight, not a replacement for Apple's 9120.
+    if missing and len(identifiers) + len(missing) > 10:
+        raise gsa.GsaError(
+            "Apple Personal Team App ID capacity is insufficient for this IPA. "
+            f"Already registered: {len(identifiers)}; this IPA needs "
+            f"{len(missing)} new App ID(s): {', '.join(missing)}. "
+            "Keep the same bundle IDs, wait for Apple's rolling 7-day "
+            "limit to allow creation, or use an existing registered App ID "
+            "with a compatible profile. ViePN will not delete existing App IDs."
+        )
+    return {"team_id": team_id, "existing": len(identifiers),
+            "reused": [name for name in requested if name in identifiers],
+            "missing": missing}
+
+
 def _ensure_app_id(team_id: str, bundle_id: str, name: str) -> dict[str, Any]:
+    # Exact reuse is essential: a new identifier consumes a scarce weekly slot.
     for existing in developer.list_app_ids(team_id):
         if existing.get("identifier") == bundle_id:
             return existing
     try:
         return developer.add_app_id(team_id, bundle_id, name)
-    except developer.DeveloperServicesError:
+    except developer.DeveloperServicesError as exc:
+        # Apple may have raced another signing tool; re-query before failing.
         for existing in developer.list_app_ids(team_id):
             if existing.get("identifier") == bundle_id:
                 return existing
+        message = str(exc)
+        if message.startswith("9120:") or "maximum app id limit" in message.lower():
+            raise gsa.GsaError(
+                "Apple error 9120: this Apple ID has reached its limit of "
+                "10 App IDs in a rolling 7-day period. "
+                f"The required App ID '{bundle_id}' does not exist yet. "
+                "Use the same already-registered bundle ID/profile if available; "
+                "otherwise wait until Apple allows another App ID. "
+                "Do not keep retrying with newly generated bundle IDs. "
+                "Removing an app from iPhone does not reset Apple's limit."
+            ) from exc
         raise
 
 

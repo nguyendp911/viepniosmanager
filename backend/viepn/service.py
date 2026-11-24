@@ -395,7 +395,10 @@ class Manager:
                 else:
                     output = await self._renew(params['installation_id'])
             except Exception as exc:
-                message = str(exc)[:1500]
+                # Keep both diagnostic stream tails; UI can expand the result.
+                message = str(exc)
+                if len(message) > 26000:
+                    message = message[:1000] + '\n[earlier output omitted]\n' + message[-24000:]
                 self.db.exec('UPDATE jobs SET state=?,output_json=?,updated_at=? WHERE id=?',
                              ('failed', json.dumps({'error': message}), utcnow(), job_id))
                 self.db.event('job_failed', f"{job['kind']}: {message}")
@@ -438,12 +441,19 @@ class Manager:
     async def _apple_install(self, params: dict) -> dict:
         """Apple GSA -> provisioning -> sign -> install; native ViePN pipeline."""
         result = await self._apple_sign(params)
-        installed = await self._install({
-            'ipa_id': result['signed_ipa_id'],
-            'udid': params['udid'],
-            'resign': False,
-            'auto_renew': bool(params.get('auto_renew', True)),
-        })
+        try:
+            installed = await self._install({
+                'ipa_id': result['signed_ipa_id'],
+                'udid': params['udid'],
+                'resign': False,
+                'auto_renew': bool(params.get('auto_renew', True)),
+            })
+        except Exception as exc:
+            raise RuntimeError(
+                f"Signing completed; device installation failed. Signed IPA ID: "
+                f"{result['signed_ipa_id']}. Bundle: {result['bundle_id']}. "
+                f"Retry installing the existing signed IPA without signing again.\n{exc}"
+            ) from exc
         self.db.exec('''UPDATE installations SET source_ipa_id=?,
                        auto_renew=?,signing_mode='apple_personal',apple_account=? WHERE id=?''',
                      (result['source_ipa_id'],

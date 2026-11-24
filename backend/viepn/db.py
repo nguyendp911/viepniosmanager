@@ -110,4 +110,4 @@ class Database:
             db.execute(sql, args)
 
     def event(self, kind: str, detail: str):
-        self.exec('INSERT INTO events(kind,detail,created_at) VALUES(?,?,?)', (kind, detail[:1000], utcnow()))
+        self.exec('INSERT INTO events(kind,detail,created_at) VALUES(?,?,?)', (kind, (detail if len(detail) <= 4000 else detail[:500] + '\n[... ]\n' + detail[-3400:]), utcnow()))

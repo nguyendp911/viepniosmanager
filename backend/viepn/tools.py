@@ -25,10 +25,16 @@ def run(args: list[str], timeout: int = 30, secret: str | None = None) -> str:
     except subprocess.TimeoutExpired as e:
         raise ExternalToolError(f'Command timed out after {timeout}s') from e
     if result.returncode:
-        details = (result.stderr or result.stdout).strip()[-1500:]
-        if secret:
-            details = details.replace(secret, '[REDACTED]')
-        raise ExternalToolError(f'Exit {result.returncode}: {details}')
+        # Installation proxy can print progress to stderr and the actual
+        # device rejection to stdout (or vice versa). Preserve both tails.
+        streams = []
+        for name, value in (('stderr', result.stderr), ('stdout', result.stdout)):
+            clean = (value or '').strip()
+            if secret:
+                clean = clean.replace(secret, '[REDACTED]')
+            if clean:
+                streams.append(f'{name}: ' + ('[earlier output omitted]\n' if len(clean) > 12000 else '') + clean[-12000:])
+        raise ExternalToolError(f'Exit {result.returncode}: ' + '\n'.join(streams))
     return result.stdout
 
 
